@@ -31,11 +31,13 @@ export function rgbToHsl(r, g, b) {
 
 // ─── Hex ──────────────────────────────────────────────────────────────────────
 export function hexToRgb(hex) {
+  if (typeof hex !== 'string') return [255, 255, 255]
   const clean = hex.replace('#', '')
   const full  = clean.length === 3
     ? clean.split('').map(c => c + c).join('')
     : clean
   const n = parseInt(full, 16)
+  if (isNaN(n)) return [255, 255, 255]
   return [(n >> 16) & 255, (n >> 8) & 255, n & 255]
 }
 
@@ -110,9 +112,11 @@ export function pctToWledBri(pct) {
 // ─── Glow Calculation ─────────────────────────────────────────────────────────
 // Maps brightness (0-255) to a CSS box-shadow glow string
 
-export function briToGlow(bri, color = '#ffffff', maxBlur = 24) {
+export function briToGlow(arg1, arg2, maxBlur = 24) {
+  let bri = typeof arg1 === 'number' ? arg1 : typeof arg2 === 'number' ? arg2 : 0
+  let color = typeof arg1 === 'string' ? arg1 : typeof arg2 === 'string' ? arg2 : null
   if (!bri || !color) return 'none'
-  const norm = bri / 255
+  const norm = Math.min(255, Math.max(0, bri)) / 255
   const blur  = norm * maxBlur
   const spread = norm * 4
   const opacity = 0.15 + norm * 0.45

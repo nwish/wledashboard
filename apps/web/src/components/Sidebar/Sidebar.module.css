@@ -24,6 +24,13 @@
   padding: var(--sp-5) var(--sp-5) var(--sp-4);
   height: var(--topbar-height);
   flex-shrink: 0;
+  text-decoration: none;
+  color: inherit;
+  transition: opacity 140ms ease;
+}
+
+.brand:hover {
+  opacity: 0.92;
 }
 
 .logo {
@@ -48,6 +55,11 @@
 }
 
 .wordmark strong {
+  font-weight: 500;
+  color: var(--text-secondary);
+}
+
+.tld {
   font-weight: 500;
   color: var(--text-secondary);
 }

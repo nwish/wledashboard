@@ -9,7 +9,27 @@ on:
       - 'v*.*.*'
 
 jobs:
+  test:
+    name: Automated Unit & Integrity Tests
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v5
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Run automated test suite
+        run: npm test
+
   build-and-push:
+    name: Build and Publish Container Image
+    needs: test
     runs-on: ubuntu-latest
     permissions:
       contents: read

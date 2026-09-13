@@ -365,9 +365,9 @@
   align-items: center;
   padding: var(--sp-3) var(--sp-5);
   border-bottom: 1px solid var(--border-subtle);
-  font: var(--type-body);
-  color: var(--text-primary);
   gap: var(--sp-4);
+  font: var(--type-small);
+  color: var(--text-primary);
   transition: background-color 120ms;
 }
 
@@ -376,23 +376,20 @@
 }
 
 .compactRow:hover {
-  background-color: var(--surface-input);
+  background-color: var(--surface-overlay);
 }
 
 .compactName {
   font-weight: 500;
-}
-
-.compactIp {
-  color: var(--text-secondary);
-  font: var(--type-small);
-  font-family: var(--font-mono);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .roomsContainer {
   display: flex;
   flex-direction: column;
-  gap: var(--sp-10);
+  gap: var(--sp-8);
 }
 
 .roomSection {
@@ -404,7 +401,160 @@
 .roomTitle {
   font: var(--type-h3);
   color: var(--text-primary);
+  display: flex;
+  align-items: baseline;
+  gap: var(--sp-2);
   border-bottom: 1px solid var(--border-subtle);
   padding-bottom: var(--sp-2);
 }
 
+/* ── Firmware View & Banner ──────────────────────────────────── */
+.firmwareContainer {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-8);
+}
+
+.firmwareBanner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sp-4);
+  padding: var(--sp-4) var(--sp-6);
+  background-color: var(--surface-raised);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-l);
+  flex-wrap: wrap;
+}
+
+.firmwareBannerContent {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.firmwareBannerTitle {
+  font: var(--type-h3);
+  color: var(--text-primary);
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3);
+}
+
+.firmwareVersionBadge {
+  font: var(--type-micro);
+  padding: 2px 8px;
+  border-radius: var(--radius-full);
+  background-color: var(--accent-violet-10);
+  border: 1px solid var(--accent-violet);
+  color: var(--accent-violet);
+  font-weight: 600;
+}
+
+.firmwareBannerSub {
+  font: var(--type-small);
+  color: var(--text-secondary);
+}
+
+.firmwareBannerActions {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3);
+  flex-wrap: wrap;
+}
+
+.firmwareRefreshBtn {
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background-color: var(--surface-overlay);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-m);
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: background-color 120ms, color 120ms, border-color 120ms;
+}
+
+.firmwareRefreshBtn:hover:not(:disabled) {
+  background-color: var(--surface-input);
+  color: var(--accent-violet);
+  border-color: var(--accent-violet);
+}
+
+.firmwareRefreshBtn:disabled {
+  opacity: 0.6;
+  cursor: wait;
+}
+
+.firmwareRefreshSpinning svg {
+  animation: spin 1s linear infinite;
+}
+
+.firmwareNotesBtn {
+  font: var(--type-small);
+  font-weight: 600;
+  color: var(--accent-violet);
+  padding: 6px 14px;
+  background-color: var(--accent-violet-10);
+  border: 1px solid var(--accent-violet);
+  border-radius: var(--radius-m);
+  cursor: pointer;
+  transition: background-color 120ms, color 120ms, opacity 120ms;
+}
+
+.firmwareNotesBtn:hover {
+  background-color: var(--accent-violet);
+  color: #fff;
+}
+
+.firmwareReleaseLink {
+  text-decoration: none;
+  font: var(--type-small);
+  font-weight: 600;
+  color: var(--text-primary);
+  padding: 6px 14px;
+  background-color: var(--surface-overlay);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-m);
+  transition: background-color 120ms, border-color 120ms;
+}
+
+.firmwareReleaseLink:hover {
+  background-color: var(--surface-input);
+  border-color: var(--border-strong);
+}
+
+.firmwareSection {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-4);
+}
+
+.firmwareSectionTitle {
+  font: var(--type-h3);
+  color: var(--text-primary);
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3);
+  border-bottom: 1px solid var(--border-subtle);
+  padding-bottom: var(--sp-2);
+}
+
+.firmwareCountBadge {
+  font: var(--type-micro);
+  color: var(--text-tertiary);
+  font-weight: 500;
+}
+
+.firmwareTag {
+  font: var(--type-micro);
+  padding: 1px 6px;
+  border-radius: var(--radius-full);
+  background-color: var(--accent-amber-10);
+  border: 1px solid var(--accent-amber);
+  color: var(--accent-amber);
+  font-weight: 600;
+}

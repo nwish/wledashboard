@@ -1,0 +1,213 @@
+/* ── Mobile Navigation Header ────────────────────────────────── */
+.mobileNav {
+  display: flex;
+  flex-direction: column;
+  background-color: var(--surface-base);
+  border-bottom: 1px solid var(--border-subtle);
+  position: sticky;
+  top: 0;
+  z-index: 90;
+  width: 100%;
+}
+
+/* Strictly hide on desktop displays */
+@media (min-width: 768px) {
+  .mobileNav {
+    display: none !important;
+  }
+}
+
+.bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--sp-3) var(--sp-4);
+  height: 56px;
+  gap: var(--sp-3);
+}
+
+.brand {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  text-decoration: none;
+  color: inherit;
+  user-select: none;
+}
+
+.logo {
+  color: var(--accent-amber);
+  display: flex;
+  flex-shrink: 0;
+}
+
+.wordmark {
+  font-family: var(--font-display);
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  letter-spacing: -0.01em;
+  white-space: nowrap;
+}
+
+.wordmark strong {
+  font-weight: 500;
+  color: var(--text-secondary);
+}
+
+.tld {
+  font-weight: 500;
+  color: var(--text-secondary);
+}
+
+.actions {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+}
+
+/* ── Install Button ──────────────────────────────────────────── */
+.installBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 10px;
+  background-color: var(--accent-violet-10);
+  border: 1px solid var(--accent-violet);
+  color: var(--accent-violet);
+  border-radius: var(--radius-full);
+  font: var(--type-small);
+  font-size: 0.78rem;
+  font-weight: 600;
+  cursor: pointer;
+  box-shadow: var(--shadow-1);
+  transition: background-color 120ms, color 120ms, transform 120ms;
+}
+
+.installBtn:hover {
+  background-color: var(--accent-violet);
+  color: #fff;
+  transform: translateY(-1px);
+}
+
+.menuToggleBtn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  background-color: var(--surface-overlay);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-m);
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: background-color 120ms, color 120ms;
+}
+
+.menuToggleBtn:hover {
+  background-color: var(--surface-input);
+  color: var(--text-primary);
+}
+
+/* ── Drawer Menu ─────────────────────────────────────────────── */
+.drawerOverlay {
+  position: fixed;
+  inset: 56px 0 0 0;
+  background-color: rgba(5, 7, 12, 0.65);
+  backdrop-filter: blur(4px);
+  z-index: 89;
+  animation: fadeIn 140ms ease-out;
+}
+
+.drawer {
+  background-color: var(--surface-base);
+  border-bottom: 1px solid var(--border-default);
+  box-shadow: var(--shadow-3);
+  padding: var(--sp-4);
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-3);
+  max-height: calc(100dvh - 56px);
+  overflow-y: auto;
+  animation: slideDown 180ms var(--ease-out-expo);
+}
+
+.drawerList {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.drawerItem {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3);
+  height: 42px;
+  padding: 0 var(--sp-3);
+  border-radius: var(--radius-m);
+  color: var(--text-secondary);
+  text-decoration: none;
+  font: var(--type-small);
+  font-size: 0.875rem;
+  font-weight: 500;
+  transition: background-color 120ms, color 120ms;
+}
+
+.drawerItem:hover {
+  background-color: var(--surface-raised);
+  color: var(--text-primary);
+}
+
+.activeDrawerItem {
+  background-color: var(--accent-violet-10);
+  color: var(--accent-violet);
+  font-weight: 600;
+}
+
+.drawerIcon {
+  width: 20px;
+  height: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.drawerFooter {
+  padding-top: var(--sp-3);
+  border-top: 1px solid var(--border-subtle);
+}
+
+.drawerInstallBtn {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--sp-2);
+  padding: var(--sp-3) var(--sp-4);
+  background-color: var(--accent-violet);
+  color: #fff;
+  border: none;
+  border-radius: var(--radius-m);
+  font: var(--type-small);
+  font-weight: 600;
+  cursor: pointer;
+  transition: opacity 120ms;
+}
+
+.drawerInstallBtn:hover {
+  opacity: 0.92;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes slideDown {
+  from { opacity: 0; transform: translateY(-8px); }
+  to { opacity: 1; transform: translateY(0); }
+}

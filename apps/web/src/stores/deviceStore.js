@@ -11,19 +11,42 @@ export const useDeviceStore = create((set, get) => ({
   loading: true,
   error: null,
   latestFirmwareVersion: null,
+  latestReleaseInfo: null,
+  isFetchingFirmware: false,
 
   // ─── Actions ─────────────────────────────────────────────────────────────────
 
-  fetchLatestFirmware: async () => {
+  fetchLatestFirmware: async (force = false) => {
+    if (get().isFetchingFirmware) return
+    set({ isFetchingFirmware: true })
     try {
-      const res = await fetch('https://api.github.com/repos/Aircoookie/WLED/releases/latest')
+      const headers = force ? { 'Cache-Control': 'no-cache' } : {}
+      let res = await fetch('https://api.github.com/repos/wled/WLED/releases/latest', { headers })
+      if (!res.ok) {
+        res = await fetch('https://api.github.com/repos/Aircoookie/WLED/releases/latest', { headers })
+      }
       if (res.ok) {
         const data = await res.json()
-        set({ latestFirmwareVersion: data.tag_name.replace('v', '') })
+        if (data.tag_name) {
+          const cleanTag = data.tag_name.replace(/^v/i, '')
+          set({
+            latestFirmwareVersion: cleanTag,
+            latestReleaseInfo: {
+              name: data.name || data.tag_name,
+              tagName: cleanTag,
+              publishedAt: data.published_at,
+              body: data.body || '',
+              htmlUrl: data.html_url,
+            },
+            isFetchingFirmware: false,
+          })
+          return
+        }
       }
     } catch (err) {
       console.warn('Failed to fetch latest WLED firmware from GitHub', err)
     }
+    set({ isFetchingFirmware: false })
   },
 
   fetchDevices: async () => {

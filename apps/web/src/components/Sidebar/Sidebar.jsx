@@ -1,5 +1,5 @@
 import { useCallback } from 'react'
-import { NavLink } from 'react-router-dom'
+import { NavLink, Link } from 'react-router-dom'
 import { useUIStore } from '../../stores/uiStore.js'
 import { LogoMark } from '../Logo/LogoMark.jsx'
 import { useUpdateCheck } from '../../hooks/useUpdateCheck.js'
@@ -25,17 +25,17 @@ export function Sidebar() {
       aria-label="Main navigation"
     >
       {/* Wordmark */}
-      <div className={styles.brand}>
+      <Link to="/" className={styles.brand} title="WLEDashboard.com">
         <span className={styles.logo} aria-hidden>
           <LogoMark />
         </span>
         {!collapsed && (
           <div className={styles.brandText}>
-            <span className={styles.wordmark}>WLED<strong>ashboard</strong></span>
+            <span className={styles.wordmark}>WLED<strong>ashboard</strong><span className={styles.tld}>.com</span></span>
             <span className={styles.version}>v{__APP_VERSION__}</span>
           </div>
         )}
-      </div>
+      </Link>
 
       {/* Navigation */}
       <nav className={styles.nav}>

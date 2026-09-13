@@ -1,0 +1,89 @@
+.ipChip {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  background: var(--surface-overlay);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-s);
+  padding: 2px 7px;
+  font: var(--type-mono);
+  font-size: 0.75rem;
+  color: var(--text-secondary);
+  cursor: pointer;
+  user-select: none;
+  transition: background-color 140ms ease, border-color 140ms ease, color 140ms ease, box-shadow 140ms ease;
+  line-height: 1.4;
+}
+
+.ipChip:hover {
+  background: var(--surface-input);
+  border-color: var(--accent-violet);
+  color: var(--text-primary);
+  box-shadow: 0 0 0 1px var(--accent-violet);
+}
+
+.ipChipActive {
+  background: var(--surface-input);
+  border-color: var(--accent-violet);
+  color: var(--text-primary);
+  box-shadow: 0 0 0 1px var(--accent-violet);
+}
+
+.compact {
+  padding: 1px 5px;
+  font-size: 0.72rem;
+}
+
+.ipCaret {
+  opacity: 0.6;
+  flex-shrink: 0;
+  transition: transform 150ms ease, opacity 150ms ease;
+}
+
+.ipChipActive .ipCaret {
+  transform: rotate(180deg);
+  opacity: 1;
+  color: var(--accent-violet);
+}
+
+/* ── Popover Menu (Portaled) ────────────────────────────────── */
+
+.popover {
+  position: fixed;
+  min-width: 175px;
+  background-color: var(--surface-overlay);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-m);
+  box-shadow: var(--shadow-4);
+  padding: 4px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  z-index: 99999;
+}
+
+.popoverItem {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 6px 10px;
+  background: none;
+  border: none;
+  border-radius: calc(var(--radius-m) - 2px);
+  font: var(--type-small);
+  color: var(--text-primary);
+  cursor: pointer;
+  text-align: left;
+  transition: background-color 100ms, color 100ms;
+}
+
+.popoverItem:hover {
+  background-color: var(--surface-input);
+  color: var(--accent-violet);
+}
+
+.popoverItem svg {
+  flex-shrink: 0;
+  opacity: 0.85;
+}

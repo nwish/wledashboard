@@ -1,6 +1,6 @@
 {
   "name": "@wledashboard/api",
-  "version": "0.17.0",
+  "version": "0.18.0",
   "private": true,
   "type": "module",
   "description": "WLEDashboard backend: Fastify API, mDNS discovery, WLED proxy, SQLite persistence",
@@ -9,7 +9,8 @@
     "dev": "node --watch src/server.js",
     "start": "node src/server.js",
     "build": "echo 'API has no build step'",
-    "db:migrate": "node src/db/migrate.js"
+    "db:migrate": "node src/db/migrate.js",
+    "test": "node --test test/*.test.js"
   },
   "dependencies": {
     "@fastify/cors": "^9.0.1",

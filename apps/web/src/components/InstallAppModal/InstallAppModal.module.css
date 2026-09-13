@@ -1,0 +1,278 @@
+.overlay {
+  position: fixed;
+  inset: 0;
+  background-color: rgba(5, 7, 12, 0.75);
+  backdrop-filter: blur(8px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--sp-4);
+  z-index: 1000;
+  animation: fadeIn 180ms ease-out;
+}
+
+.modal {
+  background-color: var(--surface-raised);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-xl);
+  box-shadow: var(--shadow-3);
+  width: 100%;
+  max-width: 460px;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  animation: slideUp 220ms var(--ease-out-expo);
+}
+
+.header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  padding: var(--sp-5) var(--sp-6);
+  border-bottom: 1px solid var(--border-subtle);
+  background-color: var(--surface-overlay);
+}
+
+.titleGroup {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3);
+}
+
+.iconBadge {
+  width: 40px;
+  height: 40px;
+  border-radius: var(--radius-l);
+  background-color: var(--accent-amber-10);
+  border: 1px solid var(--accent-amber);
+  color: var(--accent-amber);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.title {
+  font: var(--type-h3);
+  color: var(--text-primary);
+  letter-spacing: -0.01em;
+}
+
+.subtitle {
+  font: var(--type-small);
+  color: var(--text-secondary);
+  margin-top: 2px;
+}
+
+.closeBtn {
+  background: none;
+  border: none;
+  color: var(--text-tertiary);
+  cursor: pointer;
+  padding: 4px;
+  border-radius: var(--radius-m);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: color 120ms, background-color 120ms;
+}
+
+.closeBtn:hover {
+  color: var(--text-primary);
+  background-color: var(--surface-input);
+}
+
+.body {
+  padding: var(--sp-6);
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-5);
+  max-height: 75vh;
+  overflow-y: auto;
+}
+
+.section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-3);
+}
+
+.platformBadge {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--sp-2);
+  align-self: flex-start;
+  padding: 4px 10px;
+  border-radius: var(--radius-full);
+  background-color: var(--surface-overlay);
+  border: 1px solid var(--border-subtle);
+  color: var(--text-primary);
+  font: var(--type-small);
+  font-weight: 600;
+}
+
+.stepsList {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+}
+
+.stepItem {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3);
+  padding: var(--sp-2) var(--sp-3);
+  background-color: var(--surface-input);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-m);
+  font: var(--type-small);
+  color: var(--text-secondary);
+}
+
+.stepItem strong {
+  color: var(--text-primary);
+}
+
+.stepNum {
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background-color: var(--surface-overlay);
+  border: 1px solid var(--border-default);
+  color: var(--accent-violet);
+  font: var(--type-micro);
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.directInstallBox {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-3);
+}
+
+.directInstallText {
+  font: var(--type-small);
+  color: var(--text-secondary);
+}
+
+.installPrimaryBtn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--sp-2);
+  padding: var(--sp-3) var(--sp-5);
+  background-color: var(--accent-violet);
+  color: #fff;
+  border: none;
+  border-radius: var(--radius-m);
+  font: var(--type-small);
+  font-weight: 600;
+  cursor: pointer;
+  box-shadow: var(--shadow-1);
+  transition: opacity 120ms, transform 120ms;
+}
+
+.installPrimaryBtn:hover:not(:disabled) {
+  opacity: 0.92;
+  transform: translateY(-1px);
+}
+
+.installPrimaryBtn:disabled {
+  opacity: 0.6;
+  cursor: wait;
+}
+
+.generalText {
+  font: var(--type-small);
+  color: var(--text-secondary);
+  line-height: 1.5;
+}
+
+/* ── Guide Review Callout ────────────────────────────────────── */
+.guideCallout {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+  padding: var(--sp-4);
+  background-color: var(--accent-violet-10);
+  border: 1px solid var(--accent-violet);
+  border-radius: var(--radius-l);
+}
+
+.guideCalloutHeader {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  color: var(--accent-violet);
+  font: var(--type-small);
+  font-weight: 600;
+}
+
+.guideCalloutText {
+  font: var(--type-small);
+  color: var(--text-secondary);
+  line-height: 1.45;
+}
+
+.guideCalloutBtn {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 12px;
+  margin-top: 4px;
+  background-color: var(--surface-raised);
+  border: 1px solid var(--accent-violet);
+  border-radius: var(--radius-m);
+  color: var(--accent-violet);
+  font: var(--type-small);
+  font-weight: 600;
+  cursor: pointer;
+  transition: background-color 120ms, color 120ms;
+}
+
+.guideCalloutBtn:hover {
+  background-color: var(--accent-violet);
+  color: #fff;
+}
+
+.footer {
+  display: flex;
+  justify-content: flex-end;
+  padding: var(--sp-3) var(--sp-6);
+  border-top: 1px solid var(--border-subtle);
+  background-color: var(--surface-overlay);
+}
+
+.dismissBtn {
+  padding: 6px 16px;
+  background-color: var(--surface-input);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-m);
+  color: var(--text-secondary);
+  font: var(--type-small);
+  font-weight: 500;
+  cursor: pointer;
+  transition: background-color 120ms, color 120ms;
+}
+
+.dismissBtn:hover {
+  background-color: var(--surface-overlay);
+  color: var(--text-primary);
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes slideUp {
+  from { opacity: 0; transform: translateY(16px); }
+  to { opacity: 1; transform: translateY(0); }
+}

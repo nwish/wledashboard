@@ -36,7 +36,8 @@
   opacity: 0.6;
 }
 
-/* ── Header ─────────────────────────────────────────────────── */
+/* ── Header / Top Bar ───────────────────────────────────────── */
+.topBar,
 .header {
   display: flex;
   align-items: center;
@@ -45,6 +46,7 @@
   min-height: 28px;
 }
 
+.nameGroup,
 .identity {
   display: flex;
   align-items: center;
@@ -80,12 +82,28 @@
 }
 
 .version {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
   font: var(--type-micro);
+  font-size: 0.7rem;
   color: var(--text-tertiary);
   letter-spacing: 0.03em;
   flex-shrink: 0;
+  user-select: none;
 }
 
+.versionOutdated {
+  color: var(--accent-amber);
+  font-weight: 600;
+}
+
+.versionOutdated svg {
+  color: var(--accent-amber);
+  flex-shrink: 0;
+}
+
+.topActions,
 .headerActions {
   display: flex;
   align-items: center;
@@ -93,6 +111,7 @@
   flex-shrink: 0;
 }
 
+.optionsBtn,
 .menuBtn {
   display: flex;
   align-items: center;
@@ -101,14 +120,16 @@
   height: 28px;
   border-radius: var(--radius-s);
   color: var(--text-tertiary);
-  opacity: 0;
+  opacity: 0.6;
   transition: opacity 140ms, color 140ms, background-color 140ms;
 }
 
+.card:hover .optionsBtn,
 .card:hover .menuBtn {
   opacity: 1;
 }
 
+.optionsBtn:hover,
 .menuBtn:hover {
   color: var(--text-primary);
   background-color: var(--surface-overlay);
@@ -136,6 +157,9 @@
   cursor: grabbing;
 }
 
+.dragPlaceholder {
+  width: 0px;
+}
 
 /* ── Status Dot ─────────────────────────────────────────────── */
 .statusDot {
@@ -146,17 +170,17 @@
   transition: background-color 300ms var(--ease-out-expo), box-shadow 300ms var(--ease-out-expo);
 }
 
-.online {
+.onlineDot {
   background-color: var(--accent-emerald);
   box-shadow: 0 0 6px var(--accent-emerald);
 }
 
-.standby {
+.standbyDot {
   background-color: var(--text-tertiary);
   box-shadow: none;
 }
 
-.offline {
+.offlineDot {
   background-color: var(--accent-rose);
   animation: pulse 1.5s ease-in-out infinite;
 }
@@ -164,6 +188,24 @@
 @keyframes pulse {
   0%, 100% { opacity: 1; }
   50%       { opacity: 0.35; }
+}
+
+/* ── Controls (Sliders & Color) ─────────────────────────────── */
+.controls {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-4, 16px);
+}
+
+.sliderRow {
+  display: flex;
+  flex-direction: column;
+}
+
+.colorRow {
+  display: flex;
+  flex-direction: column;
+  padding-top: 6px;
 }
 
 /* ── Section ────────────────────────────────────────────────── */
@@ -181,14 +223,91 @@
   font-size: 0.65rem;
 }
 
-/* ── Chips ──────────────────────────────────────────────────── */
-.chips {
+/* ── Footer & Chicklet Rows ─────────────────────────────────── */
+.footer {
   display: flex;
-  flex-wrap: nowrap;
-  align-items: center;
+  flex-direction: column;
   gap: var(--sp-2);
   margin-top: var(--sp-1);
+}
+
+.chickletRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sp-2);
+  min-height: 24px;
+}
+
+.hardwareGroup {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  width: 124px;
+  flex-shrink: 0;
+}
+
+.hardwareGroup .chip {
+  flex: 1.3;
+  justify-content: center;
+}
+
+.hardwareGroup .densityChip {
+  flex: 0.9;
+  justify-content: center;
+}
+
+.hardwareGroup .singleHardwareChip {
+  width: 100%;
+  flex: 1;
+}
+
+.effectGroup {
+  display: flex;
+  align-items: center;
+  width: 124px;
+  flex-shrink: 0;
+}
+
+.effectChip {
+  width: 124px;
+  max-width: 124px;
+  justify-content: center;
+  text-align: center;
   overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ipGroup {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  flex-shrink: 0;
+  width: 124px;
+  margin-left: auto;
+}
+
+.cardIpChip {
+  width: 100%;
+  justify-content: center;
+}
+
+.actionGroup {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+  width: 124px;
+  margin-left: auto;
+}
+
+.actionChip {
+  flex: 1;
+  justify-content: center;
+  text-align: center;
+  cursor: pointer;
+  transition: all 0.2s;
 }
 
 .chip {
@@ -220,8 +339,115 @@ button.chip:hover {
   color: var(--text-primary);
 }
 
-.ipChip {
+.firmwareOutdatedChip {
+  border-color: rgba(245, 158, 11, 0.4);
+  background-color: rgba(245, 158, 11, 0.08);
+  color: #f59e0b;
+}
+
+.outdatedBadgeText {
+  margin-left: 4px;
+  font-size: 0.65rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  padding: 1px 4px;
+  background-color: rgba(245, 158, 11, 0.2);
+  border-radius: var(--radius-xs);
+  color: #fbbf24;
+}
+
+.editableChip {
+  cursor: pointer;
+}
+
+.editableChip:hover {
+  border-color: var(--border-default);
+  color: var(--text-primary);
+  background-color: var(--surface-raised);
+}
+
+.ipMenuWrapper {
   margin-left: auto;
+  position: relative;
+  display: inline-flex;
+}
+
+.ipChip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-family: var(--font-mono);
+  user-select: none;
+}
+
+.ipChipActive {
+  background-color: var(--surface-raised);
+  border-color: var(--accent-violet);
+  color: var(--text-primary);
+}
+
+.ipCaret {
+  opacity: 0.6;
+  transition: transform 150ms ease;
+}
+
+.ipChipActive .ipCaret {
+  transform: rotate(180deg);
+  opacity: 1;
+}
+
+.ipMenuDropdown {
+  position: fixed;
+  min-width: 175px;
+  background-color: var(--surface-overlay);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-m);
+  box-shadow: var(--shadow-4);
+  padding: 4px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  z-index: 99999;
+  transform: translate(-100%, -100%);
+  animation: ipMenuEnter 140ms var(--ease-out-expo);
+}
+
+@keyframes ipMenuEnter {
+  from {
+    opacity: 0;
+    transform: translate(-100%, calc(-100% + 4px)) scale(0.96);
+  }
+  to {
+    opacity: 1;
+    transform: translate(-100%, -100%) scale(1);
+  }
+}
+
+.ipMenuItem {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 6px 10px;
+  background: none;
+  border: none;
+  border-radius: calc(var(--radius-m) - 2px);
+  font: var(--type-small);
+  color: var(--text-primary);
+  cursor: pointer;
+  text-align: left;
+  transition: background-color 100ms, color 100ms;
+}
+
+.ipMenuItem:hover {
+  background-color: var(--surface-input);
+  color: var(--accent-violet);
+}
+
+.ipMenuItem svg {
+  flex-shrink: 0;
+  opacity: 0.85;
 }
 
 /* ── Offline overlay ────────────────────────────────────────── */

@@ -224,18 +224,34 @@
 .rowMeta {
   display: flex;
   flex-wrap: wrap;
+  align-items: center;
   gap: var(--sp-1);
 }
 
 .metaChip {
   display: inline-flex;
   align-items: center;
-  height: 18px;
+  height: 20px;
   padding: 0 var(--sp-2);
   background-color: var(--surface-overlay);
+  border: 1px solid var(--border-subtle);
   border-radius: var(--radius-s);
   font: var(--type-micro);
   color: var(--text-secondary);
+  letter-spacing: 0.02em;
+}
+
+.updateBadge {
+  display: inline-flex;
+  align-items: center;
+  height: 20px;
+  padding: 0 var(--sp-2);
+  background-color: rgba(245, 158, 11, 0.12);
+  border: 1px solid var(--accent-amber);
+  border-radius: var(--radius-s);
+  font: var(--type-micro);
+  font-weight: 600;
+  color: var(--accent-amber);
   letter-spacing: 0.02em;
 }
 
@@ -250,6 +266,27 @@
   align-items: center;
   gap: var(--sp-2);
   flex-shrink: 0;
+}
+
+.iconBtn {
+  height: 28px;
+  width: 28px;
+  padding: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background-color: var(--surface-overlay);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-s);
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: background-color 120ms, color 120ms, border-color 120ms;
+}
+
+.iconBtn:hover {
+  background-color: var(--surface-raised);
+  color: var(--accent-violet);
+  border-color: var(--accent-violet);
 }
 
 .confirmMsg {

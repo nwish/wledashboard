@@ -81,4 +81,12 @@ export const useUIStore = create((set, get) => ({
     try { localStorage.setItem('wled_dashboard_filter', filter) } catch {}
     set({ dashboardFilter: filter })
   },
+
+  // ── Device IP Click Behavior Preference ─────────────────────────────────────
+  // Options: 'menu' (show action menu), 'open' (open in new tab), 'copy' (copy to clipboard)
+  deviceIpClickAction: (() => { try { return localStorage.getItem('wled_ip_click_action') || 'menu' } catch { return 'menu' } })(),
+  setDeviceIpClickAction: (action) => {
+    try { localStorage.setItem('wled_ip_click_action', action) } catch {}
+    set({ deviceIpClickAction: action })
+  },
 }))

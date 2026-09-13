@@ -3,6 +3,8 @@
 export const GUIDE_CATEGORIES = [
   { id: "all", label: "All Guides" },
   { id: "architecture", label: "OEM vs WLEDashboard" },
+  { id: "homeassistant", label: "Home Assistant" },
+  { id: "mobile", label: "Mobile & PWA" },
   { id: "groups", label: "Groups & Sync" },
   { id: "traveling", label: "Multi-Controller" },
   { id: "spatial", label: "3D Spatial" },
@@ -141,6 +143,216 @@ export const GUIDES = [
           "Use Native WLED OEM Interface for: Initial Wi-Fi provisioning, GPIO pin assignment, LED count configuration, power supply amp limiters, hardware relay pins, color channel order calibration (RGB/GRB/RGBW), and flashing OTA firmware updates.",
           "Use WLEDashboard for: Daily lighting control, grouping controllers by room, multi-strip traveling wave animations, 3D spatial layout design, keyframe timeline authoring, Spotify artwork reactive sync, weather-based lighting automations, and unified Home Assistant integration."
         ],
+      },
+    ],
+  },
+  {
+    id: "home-assistant-integration",
+    category: "homeassistant",
+    title: "Home Assistant Integration: Manual Setup, HACS & MQTT Auto-Discovery",
+    summary: "Complete setup guide for connecting WLEDashboard with Home Assistant to expose 3D Spatial Rooms, lighting groups, and studio routines without waiting on store approval.",
+    readTime: "5 min read",
+    tags: ["home assistant", "hacs", "manual", "mqtt", "integration", "rooms", "groups", "routines", "entities", "custom_components"],
+    sections: [
+      {
+        title: "Overview: Zero Waiting on App Stores or Default Repositories",
+        content: "WLEDashboard provides first-class Home Assistant integration right now. You do not need to wait for inclusion in the official HACS default store to install and use it. WLEDashboard supports three separate deployment methods to fit your exact Home Assistant setup:",
+        steps: [
+          "Method 1: Direct Manual Component Copy (Recommended for offline, local-first environments)",
+          "Method 2: HACS Custom Repository (Recommended for automated in-UI update notifications)",
+          "Method 3: Native MQTT Auto-Discovery (Zero Python installation required; instant entity creation via Mosquitto)"
+        ],
+        callout: {
+          type: "note",
+          title: "Architecture Benefit",
+          text: "Instead of creating dozens of unorganized micro-entities for every raw ESP pin, WLEDashboard consolidates your lights into physical 3D Room entities, synchronized group lights, and one-click routine trigger buttons.",
+        },
+      },
+      {
+        title: "Method 1: Manual Custom Component Installation",
+        content: "You can copy the integration files directly into your Home Assistant installation folder in less than two minutes:",
+        steps: [
+          "From your WLEDashboard installation or GitHub repository, locate the directory: custom_components/wledashboard.",
+          "Copy the entire 'wledashboard' directory into your Home Assistant configuration directory under 'custom_components/' (for Home Assistant OS / Supervised: /config/custom_components/wledashboard/manifest.json).",
+          "Restart Home Assistant (Settings > System > Restart).",
+          "In Home Assistant, navigate to Settings > Devices & Services > Add Integration.",
+          "Search for 'WLEDashboard' and select it.",
+          "Enter your WLEDashboard host IP, port (default: 3001), and paste your Long-Lived API Token (retrieved from WLEDashboard Settings > Home Assistant & MQTT).",
+          "Click Submit. Your spatial rooms, groups, and routines will be created as native Home Assistant entities immediately."
+        ],
+        callout: {
+          type: "tip",
+          title: "Locating the API Token",
+          text: "In WLEDashboard, open Settings and scroll to Home Assistant & MQTT. Click 'Copy API Token' to place the required secret on your clipboard.",
+        },
+      },
+      {
+        title: "Method 2: HACS Custom Repository Installation",
+        content: "If you use HACS (Home Assistant Community Store), you can add WLEDashboard as a custom repository for one-click downloads and upgrade tracking:",
+        steps: [
+          "In Home Assistant, click on 'HACS' in your sidebar.",
+          "Click on 'Integrations', then click the three vertical dots (•••) in the top-right corner and select 'Custom repositories'.",
+          "In the Repository field, enter: https://github.com/upioneer/WLEDashboard",
+          "In the Type / Category dropdown, select 'Integration'.",
+          "Click 'Add'. The repository will be parsed and validated immediately.",
+          "Search for 'WLEDashboard Integration' in HACS, click 'Download', and confirm.",
+          "Restart Home Assistant, then add the integration via Settings > Devices & Services as described above."
+        ],
+      },
+      {
+        title: "Method 3: Native MQTT Auto-Discovery (Zero Installation)",
+        content: "If you prefer not to manage custom Python components, WLEDashboard includes a built-in MQTT discovery service:",
+        steps: [
+          "Ensure your Home Assistant has the official MQTT Integration configured with your Mosquitto broker.",
+          "In WLEDashboard, navigate to Settings > MQTT Broker Configuration.",
+          "Toggle 'Enable MQTT Auto-Discovery' to ON.",
+          "Enter your MQTT broker URL (e.g. mqtt://homeassistant.local:1883 or internal IP), along with your username and password.",
+          "Click Save Settings.",
+          "WLEDashboard immediately publishes Home Assistant auto-discovery payloads (homeassistant/light/.../config). Your spatial rooms and groups appear instantly in Home Assistant without restarting."
+        ],
+      },
+      {
+        title: "Entities and Capabilities Exposed to Home Assistant",
+        content: "Once connected, WLEDashboard dynamically exposes the following entities:",
+        table: {
+          headers: ["Entity Type", "Identifier Format", "Description", "Available Actions"],
+          rows: [
+            [
+              "Room Lights",
+              "light.room_<room_id>",
+              "Consolidated control for all fixtures physically anchored inside a 3D spatial room.",
+              "On/off, brightness slider, color temperature, full RGB color selection."
+            ],
+            [
+              "Group Lights",
+              "light.group_<group_id>",
+              "Controls all controllers grouped into Zones, Scenes, or Sync sets.",
+              "Concurrent brightness and color distribution across all group devices."
+            ],
+            [
+              "Routine Buttons",
+              "button.routine_<routine_id>",
+              "Triggers multi-step Studio timeline animations and sequential sweeps.",
+              "Execute from Home Assistant dashboards, automations, NFC tags, or Zigbee buttons."
+            ],
+            [
+              "Weather Sync Switches",
+              "switch.weather_sync_<device_id>",
+              "Toggles real-time meteorological animation effects on target controllers.",
+              "Turn weather reactive lighting on or off per fixture."
+            ],
+            [
+              "Spotify Sync Switches",
+              "switch.spotify_sync_<device_id>",
+              "Toggles real-time album artwork color synchronization.",
+              "Automate music lighting when a media player starts playing."
+            ]
+          ]
+        },
+      },
+      {
+        title: "Custom Services for Home Assistant Automations",
+        content: "The integration also registers dedicated Home Assistant services for automation scripts:",
+        steps: [
+          "wledashboard.execute_routine: Execute any timeline routine by routine_id with optional transition overrides.",
+          "wledashboard.apply_palette: Apply a Studio custom palette across specified target devices or groups.",
+          "wledashboard.simulate_weather: Trigger instant weather simulations (such as thunderstorm lightning or snowfall) directly from Home Assistant automations."
+        ],
+      },
+    ],
+  },
+  {
+    id: "mobile-pwa-install",
+    category: "mobile",
+    title: "Mobile App Installation: Add to Home Screen (iOS & Android)",
+    summary: "How to install WLEDashboard as a full-screen, standalone mobile web app on iPhone, iPad, and Android devices without an app store.",
+    readTime: "4 min read",
+    tags: ["mobile", "pwa", "ios", "android", "standalone", "homescreen", "safari", "chrome", "edge"],
+    sections: [
+      {
+        title: "Overview: Native App Feel, Zero App Store Bloat",
+        content: "WLEDashboard is engineered as a modern Progressive Web App (PWA). When added to your mobile home screen, it launches in standalone mode: browser navigation bars, tab switchers, and URL bars are completely removed, providing a native, full-screen control surface for your LED lighting network. No app store download, third-party account, or cloud telemetry is required.",
+        callout: {
+          type: "note",
+          title: "Standalone Windowing",
+          text: "Once added to your home screen, WLEDashboard appears as an independent app tile in your iOS and Android multitasking app switchers, persisting state and maintaining real-time WebSocket connectivity seamlessly.",
+        },
+      },
+      {
+        title: "Installing on Apple iOS (iPhone & iPad Safari)",
+        content: "Apple iOS requires web app installation to be initiated through Safari's built-in system Share sheet:",
+        steps: [
+          "Open Safari on your iPhone or iPad and navigate to your WLEDashboard instance URL.",
+          "Tap the Share button in the bottom toolbar on iPhone (or top navigation bar on iPad).",
+          "Scroll down in the share sheet options and tap 'Add to Home Screen'.",
+          "Confirm the app name 'WLEDashboard' and inspect the custom solar icon badge.",
+          "Tap 'Add' in the top right corner of the screen.",
+          "The WLEDashboard icon is now pinned to your Home Screen. Tap it anytime to launch in full-screen standalone mode."
+        ],
+        callout: {
+          type: "tip",
+          title: "Browser Requirement on iOS",
+          text: "Due to iOS WebKit constraints, the 'Add to Home Screen' action must be performed in Apple Safari. Third-party iOS browsers (like Chrome or Firefox for iOS) lack system permission to create standalone home screen web apps.",
+        },
+      },
+      {
+        title: "Installing on Android (Google Chrome & Microsoft Edge)",
+        content: "Android provides automated in-app prompt installation and manual menu installation:",
+        steps: [
+          "Open Google Chrome or Microsoft Edge on your Android smartphone or tablet.",
+          "Navigate to your WLEDashboard instance.",
+          "If prompted by the in-app mobile header bar, tap 'Install' to trigger the native installation dialog immediately.",
+          "Alternatively, tap the browser menu (three vertical dots in the top-right corner).",
+          "Select 'Install app' or 'Add to Home screen' from the menu.",
+          "Confirm the installation dialog. WLEDashboard will be added to your home screen and native Android app drawer."
+        ],
+      },
+      {
+        title: "Local Network (HTTP) vs Secure HTTPS Domains",
+        content: "Depending on your local network architecture, browser installation policies vary slightly:",
+        steps: [
+          "Direct Local IP over HTTP (e.g. http://192.168.1.100:3001): Apple Safari fully supports Add to Home Screen over internal HTTP without restrictions. Android Chrome allows manual installation via the three-dot browser menu.",
+          "Reverse Proxy with HTTPS (Nginx Proxy Manager, Cloudflare, Traefik): Full automated PWA installation prompts and service worker caching are active across all Android and desktop PWA browsers."
+        ],
+        callout: {
+          type: "note",
+          title: "Zero Cloud Dependency",
+          text: "Whether installed over plain local IP or HTTPS, WLEDashboard communicates directly with your ESP microcontrollers over your local LAN. No external internet connectivity is required for daily operation.",
+        },
+      },
+      {
+        title: "Feature Comparison: Browser Tab vs Installed Mobile App",
+        content: "A comparison of standard mobile browser tabs versus the installed home screen experience:",
+        table: {
+          headers: ["Feature", "Standard Mobile Browser Tab", "Installed Home Screen Web App"],
+          rows: [
+            [
+              "Viewport Real Estate",
+              "Reduced by browser URL address bar and bottom toolbar.",
+              "100% full-screen immersive display with edge-to-edge layout."
+            ],
+            [
+              "Multitasking Switcher",
+              "Buried inside browser tabs among other open websites.",
+              "Dedicated application tile in iOS and Android app switchers."
+            ],
+            [
+              "Launch Access",
+              "Requires opening browser, navigating bookmarks, or entering IP.",
+              "Instant one-tap launch directly from your mobile home screen."
+            ],
+            [
+              "Accidental Navigation",
+              "Swipe gestures can accidentally trigger page back or reload.",
+              "Standalone application container prevents accidental navigation exits."
+            ],
+            [
+              "Status Bar Integration",
+              "Standard browser chrome coloring.",
+              "Seamless translucent dark status bar matching dashboard palette."
+            ]
+          ]
+        },
       },
     ],
   },

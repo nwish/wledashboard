@@ -21,11 +21,22 @@ import { useSpatialStore } from '../../stores/spatialStore.js'
 import { DeviceCard } from '../../components/DeviceCard/DeviceCard.jsx'
 import { GroupCard } from '../../components/GroupCard/GroupCard.jsx'
 import { SearchBar } from '../../components/SearchBar/SearchBar.jsx'
+import { IpChip } from '../../components/IpChip/IpChip.jsx'
+import { ReleaseNotesModal } from '../../components/ReleaseNotesModal/ReleaseNotesModal.jsx'
 import { extractDominantColor, blendColors, wledBriToPct, pctToWledBri } from '../../lib/colors.js'
+import { isDeviceFirmwareOutdated, getEffectiveLatestVersion } from '../../lib/firmware.js'
 import { Toggle } from '../../components/Toggle/Toggle.jsx'
 import styles from './Dashboard.module.css'
 
-
+function RefreshIcon() {
+  return (
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <polyline points="23 4 23 10 17 10" />
+      <polyline points="1 20 1 14 7 14" />
+      <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15" />
+    </svg>
+  )
+}
 
 function SortableCard({ device, disabled, room, animationDelay }) {
   const { attributes, listeners, setNodeRef, setActivatorNodeRef, transform, transition, isDragging } =
@@ -80,7 +91,7 @@ function SortableCard({ device, disabled, room, animationDelay }) {
 // ─── Dashboard ────────────────────────────────────────────────────────────────
 
 export function Dashboard() {
-  const { devices, loading, error, fetchDevices, reorderDevices } = useDeviceStore()
+  const { devices, loading, error, fetchDevices, reorderDevices, latestFirmwareVersion, latestReleaseInfo, isFetchingFirmware, fetchLatestFirmware } = useDeviceStore()
   const { groups, fetchGroups } = useGroupStore()
   const { hierarchy, fetchHierarchy } = useSpatialStore()
   const setHeaderAccentColor = useUIStore(s => s.setHeaderAccentColor)
@@ -94,6 +105,7 @@ export function Dashboard() {
   const [search, setSearch]         = useState('')
   const [localOrder, setLocalOrder] = useState([])
   const [activeId, setActiveId]     = useState(null)
+  const [showReleaseNotes, setShowReleaseNotes] = useState(false)
 
   useEffect(() => {
     fetchDevices()
@@ -159,23 +171,30 @@ export function Dashboard() {
     })
   }
 
-  const onlineCount  = devices.filter(d => d.is_online === 1).length
-  const offlineCount = devices.filter(d => d.is_online === 0).length
-  const onCount      = devices.filter(d => d.liveState?.on && d.is_online === 1).length
-  const offCount     = devices.filter(d => (!d.liveState?.on || d.is_online === 0)).length
+  const effectiveLatestVersion = getEffectiveLatestVersion(devices, latestFirmwareVersion)
 
   const filtered = sortedDevices.filter(d => {
-    const matchesSearch = !search ||
-      d.name.toLowerCase().includes(search.toLowerCase()) ||
-      d.ip_address.includes(search)
-    const matchesFilter =
-      filter === 'all' ||
-      (filter === 'online'  && d.is_online === 1) ||
-      (filter === 'offline' && d.is_online === 0) ||
-      (filter === 'on'      && d.liveState?.on && d.is_online === 1) ||
-      (filter === 'off'     && (!d.liveState?.on || d.is_online === 0))
-    return matchesSearch && matchesFilter
+    if (search) {
+      const q = search.toLowerCase()
+      const room = deviceRoomMap[d.id]?.toLowerCase() || ''
+      if (!d.name.toLowerCase().includes(q) && !d.ip_address.includes(q) && !room.includes(q)) {
+        return false
+      }
+    }
+    if (filter === 'online')  return d.is_online
+    if (filter === 'offline') return !d.is_online
+    if (filter === 'on')      return d.is_online && (d.liveState?.on ?? false)
+    if (filter === 'off')     return d.is_online && !(d.liveState?.on ?? false)
+    if (filter === 'firmware') return isDeviceFirmwareOutdated(d, effectiveLatestVersion)
+    return true
   })
+
+  // Stats counts
+  const onlineCount   = devices.filter(d => d.is_online).length
+  const offlineCount  = devices.length - onlineCount
+  const onCount       = devices.filter(d => d.is_online && (d.liveState?.on ?? false)).length
+  const offCount      = devices.filter(d => d.is_online && !(d.liveState?.on ?? false)).length
+  const outdatedCount = devices.filter(d => isDeviceFirmwareOutdated(d, effectiveLatestVersion)).length
 
   // dnd-kit sensors
   const sensors = useSensors(
@@ -221,6 +240,13 @@ export function Dashboard() {
             <StatPill label="Offline" value={offlineCount} active={filter === 'offline'} onClick={() => setFilter('offline')} />
             <StatPill label="ON"      value={onCount} active={filter === 'on'} onClick={() => setFilter('on')} />
             <StatPill label="OFF"     value={offCount} active={filter === 'off'} onClick={() => setFilter('off')} />
+            <StatPill 
+              label="Firmware" 
+              value={outdatedCount} 
+              active={filter === 'firmware'} 
+              highlight={outdatedCount > 0}
+              onClick={() => setFilter('firmware')} 
+            />
             {groups.length > 0 && <StatPill label="Groups" value={groups.length} active={false} onClick={() => setViewMode('groups')} />}
           </div>
         </div>
@@ -254,6 +280,7 @@ export function Dashboard() {
             {groups.length > 0 && <option value="groups">Groups ({groups.length})</option>}
             <option value="media">Media & Sync</option>
             <option value="favorites">Favorites</option>
+            <option value="firmware">Firmware ({outdatedCount})</option>
           </select>
           <span className={styles.networkBadge}>
             <span className={styles.networkDot} />
@@ -283,42 +310,116 @@ export function Dashboard() {
       ) : viewMode === 'rooms' ? (
         <RoomsView devices={filtered} deviceRoomMap={deviceRoomMap} />
       ) : viewMode === 'compact' ? (
-        <CompactView devices={filtered} />
+        <CompactView devices={filtered} effectiveLatestVersion={effectiveLatestVersion} />
       ) : viewMode === 'media' ? (
         <MediaView devices={filtered} />
       ) : viewMode === 'favorites' ? (
         <FavoritesView devices={filtered} />
+      ) : viewMode === 'firmware' ? (
+        <FirmwareView 
+          devices={devices} 
+          effectiveLatestVersion={effectiveLatestVersion}
+          latestReleaseInfo={latestReleaseInfo}
+          isFetchingFirmware={isFetchingFirmware}
+          onRefresh={() => {
+            fetchLatestFirmware(true)
+            fetchDevices()
+          }}
+          onOpenNotes={() => setShowReleaseNotes(true)}
+        />
       ) : filtered.length === 0 ? (
-        <NoResults onClear={() => { setSearch(''); setFilter('all') }} />
+        <NoResults filter={filter} effectiveLatestVersion={effectiveLatestVersion} onClear={() => { setSearch(''); setFilter('all') }} />
       ) : (
-        <DndContext 
-          sensors={sensors} 
-          collisionDetection={closestCenter} 
-          onDragStart={handleDragStart}
-          onDragEnd={handleDragEnd}
-          onDragCancel={handleDragCancel}
-        >
-          <SortableContext items={filtered.map(d => d.id)} strategy={rectSortingStrategy}>
-            <section className={styles.grid} aria-label="Device list">
-              {filtered.map((device, i) => (
-                <SortableCard 
-                  key={device.id} 
-                  device={device} 
-                  disabled={!isManualSort} 
-                  room={sortMode === 'room' ? deviceRoomMap[device.id] : null}
-                  animationDelay={`${i * 30}ms`}
-                />
-              ))}
-            </section>
-          </SortableContext>
-          <DragOverlay dropAnimation={null}>
-            {activeDevice ? (
-              <div style={{ transform: 'scale(1.02)', boxShadow: 'var(--shadow-4)', borderRadius: 'var(--radius-l)', cursor: 'grabbing' }}>
-                <DeviceCard device={activeDevice} />
+        <>
+          {filter === 'firmware' && (
+            <div className={styles.firmwareBanner}>
+              <div className={styles.firmwareBannerContent}>
+                <div className={styles.firmwareBannerTitle}>
+                  <span>Firmware Updates</span>
+                  {effectiveLatestVersion && (
+                    <span className={styles.firmwareVersionBadge}>Latest: v{effectiveLatestVersion}</span>
+                  )}
+                </div>
+                <p className={styles.firmwareBannerSub}>
+                  {filtered.length} {filtered.length === 1 ? 'device' : 'devices'} behind current release.
+                </p>
               </div>
-            ) : null}
-          </DragOverlay>
-        </DndContext>
+              <div className={styles.firmwareBannerActions}>
+                <button
+                  type="button"
+                  className={[styles.firmwareRefreshBtn, isFetchingFirmware && styles.firmwareRefreshSpinning].filter(Boolean).join(' ')}
+                  onClick={() => {
+                    fetchLatestFirmware(true)
+                    fetchDevices()
+                  }}
+                  disabled={isFetchingFirmware}
+                  title="Check for firmware updates now"
+                  aria-label="Check for firmware updates now"
+                >
+                  <RefreshIcon />
+                </button>
+                {effectiveLatestVersion && (
+                  <button
+                    type="button"
+                    className={styles.firmwareNotesBtn}
+                    onClick={() => setShowReleaseNotes(true)}
+                  >
+                    What's New in v{effectiveLatestVersion}
+                  </button>
+                )}
+                <a 
+                  href="https://github.com/wled/WLED/releases" 
+                  target="_blank" 
+                  rel="noopener noreferrer"
+                  className={styles.firmwareReleaseLink}
+                >
+                  View WLED Releases
+                </a>
+              </div>
+            </div>
+          )}
+          <DndContext 
+            sensors={sensors} 
+            collisionDetection={closestCenter} 
+            onDragStart={handleDragStart}
+            onDragEnd={handleDragEnd}
+            onDragCancel={handleDragCancel}
+          >
+            <SortableContext items={filtered.map(d => d.id)} strategy={rectSortingStrategy}>
+              <section className={styles.grid} aria-label="Device list">
+                {filtered.map((device, i) => (
+                  <SortableCard 
+                    key={device.id} 
+                    device={device} 
+                    disabled={!isManualSort} 
+                    room={sortMode === 'room' ? deviceRoomMap[device.id] : null}
+                    animationDelay={`${i * 30}ms`}
+                  />
+                ))}
+              </section>
+            </SortableContext>
+            <DragOverlay dropAnimation={null}>
+              {activeDevice ? (
+                <div style={{ transform: 'scale(1.02)', boxShadow: 'var(--shadow-4)', borderRadius: 'var(--radius-l)', cursor: 'grabbing' }}>
+                  <DeviceCard device={activeDevice} />
+                </div>
+              ) : null}
+            </DragOverlay>
+          </DndContext>
+        </>
+      )}
+
+      {showReleaseNotes && (
+        <ReleaseNotesModal
+          releaseInfo={latestReleaseInfo || {
+            tagName: effectiveLatestVersion || '0.15.1',
+            name: `WLED v${effectiveLatestVersion || '0.15.1'}`,
+            publishedAt: new Date().toISOString(),
+            body: `## What's New in WLED v${effectiveLatestVersion || '0.15.1'}\n\n* Multi-segment synchronization and smooth transition curves\n* Enhanced audio reactivity and FFT audio analysis\n* Resilient network reconnection and exponential backoff\n* High-throughput JSON and WebSocket streaming APIs\n* Improved memory management for ESP32/ESP8266 architectures`,
+            htmlUrl: 'https://github.com/wled/WLED/releases',
+          }}
+          onClose={() => setShowReleaseNotes(false)}
+        />
       )}
     </main>
   )
@@ -326,15 +427,21 @@ export function Dashboard() {
 
 // ─── Sub-components ───────────────────────────────────────────────────────────
 
-function StatPill({ label, value, active, onClick }) {
+function StatPill({ label, value, active, highlight, onClick }) {
   return (
     <button
-      className={[styles.statPill, active && styles.statPillActive].filter(Boolean).join(' ')}
+      className={[
+        styles.statPill,
+        active && styles.statPillActive,
+        highlight && !active && styles.statPillHighlight
+      ].filter(Boolean).join(' ')}
       onClick={onClick}
       aria-pressed={active}
       title={`Filter by ${label}`}
     >
-      <span className={styles.statValue}>{value}</span>
+      <span className={[styles.statValue, highlight && !active && styles.statValueHighlight].filter(Boolean).join(' ')}>
+        {value}
+      </span>
       <span className={styles.statLabel}>{label}</span>
     </button>
   )
@@ -356,7 +463,20 @@ function EmptyState() {
   )
 }
 
-function NoResults({ onClear }) {
+function NoResults({ filter, effectiveLatestVersion, onClear }) {
+  if (filter === 'firmware') {
+    return (
+      <div className={styles.emptyState} role="status">
+        <p className={styles.emptyTitle}>All Devices Up to Date</p>
+        <p className={styles.emptyBody}>
+          Every detected controller is running the current release
+          {effectiveLatestVersion ? ` (v${effectiveLatestVersion})` : ''}.
+        </p>
+        <button className={styles.retryBtn} onClick={onClear}>Show all devices</button>
+      </div>
+    )
+  }
+
   return (
     <div className={styles.emptyState} role="status">
       <p className={styles.emptyTitle}>No matches</p>
@@ -383,9 +503,9 @@ function DashboardSkeleton() {
 
 function DashboardError({ message, onRetry }) {
   return (
-    <main className={styles.dashboard}>
-      <div className={styles.errorState} role="alert">
-        <p className={styles.errorTitle}>Could not connect to API</p>
+    <main className={styles.dashboard} role="alert">
+      <div className={styles.errorState}>
+        <p className={styles.errorTitle}>Failed to load devices</p>
         <p className={styles.errorBody}>{message}</p>
         <button className={styles.retryBtn} onClick={onRetry}>Try Again</button>
       </div>
@@ -393,18 +513,14 @@ function DashboardError({ message, onRetry }) {
   )
 }
 
-// ─── Extra Views ──────────────────────────────────────────────────────────────
-
-function CompactView({ devices }) {
+function CompactView({ devices, effectiveLatestVersion }) {
   const sendCommand = useDeviceStore(s => s.sendCommand)
   const [sortKey, setSortKey] = useState('name')
   const [sortAsc, setSortAsc] = useState(true)
 
-  if (devices.length === 0) return <NoResults onClear={() => {}} />
-
   const handleSort = (key) => {
     if (sortKey === key) {
-      setSortAsc(!sortAsc)
+      setSortAsc(v => !v)
     } else {
       setSortKey(key)
       setSortAsc(true)
@@ -412,22 +528,16 @@ function CompactView({ devices }) {
   }
 
   const sortedDevices = [...devices].sort((a, b) => {
-    const aOn = a.liveState?.on ?? false
-    const bOn = b.liveState?.on ?? false
-    const aBri = a.liveState?.bri ?? 0
-    const bBri = b.liveState?.bri ?? 0
-
     let cmp = 0
-    if (sortKey === 'name') {
-      cmp = a.name.localeCompare(b.name, undefined, { numeric: true })
-    } else if (sortKey === 'ip') {
-      cmp = a.ip_address.localeCompare(b.ip_address, undefined, { numeric: true })
-    } else if (sortKey === 'status') {
-      cmp = (a.is_online ? 1 : 0) - (b.is_online ? 1 : 0)
-    } else if (sortKey === 'power') {
-      cmp = (aOn ? 1 : 0) - (bOn ? 1 : 0)
-    } else if (sortKey === 'bri') {
-      cmp = aBri - bBri
+    if (sortKey === 'name') cmp = a.name.localeCompare(b.name)
+    else if (sortKey === 'ip') cmp = a.ip_address.localeCompare(b.ip_address)
+    else if (sortKey === 'status') cmp = (a.is_online ? 1 : 0) - (b.is_online ? 1 : 0)
+    else if (sortKey === 'power') cmp = ((a.liveState?.on ? 1 : 0) - (b.liveState?.on ? 1 : 0))
+    else if (sortKey === 'bri') cmp = (a.liveState?.bri ?? 0) - (b.liveState?.bri ?? 0)
+    else if (sortKey === 'firmware') {
+      const vA = a.firmware_ver ? String(a.firmware_ver).replace(/^v/i, '') : ''
+      const vB = b.firmware_ver ? String(b.firmware_ver).replace(/^v/i, '') : ''
+      cmp = vA.localeCompare(vB, undefined, { numeric: true })
     }
 
     return sortAsc ? cmp : -cmp
@@ -450,7 +560,8 @@ function CompactView({ devices }) {
     <div className={styles.compactContainer}>
       <div className={styles.compactHeaderRow}>
         {renderHeader('name', 'Name', { flex: 1 })}
-        {renderHeader('ip', 'IP Address', { width: '120px' })}
+        {renderHeader('ip', 'IP Address', { width: '130px' })}
+        {renderHeader('firmware', 'Firmware', { width: '120px' })}
         {renderHeader('status', 'Status', { width: '90px' })}
         {renderHeader('power', 'Power', { width: '60px' })}
         {renderHeader('bri', 'Bri', { width: '60px', textAlign: 'right' })}
@@ -458,13 +569,24 @@ function CompactView({ devices }) {
       {sortedDevices.map(d => {
         const isOn = d.liveState?.on ?? false
         const briPct = wledBriToPct(d.liveState?.bri ?? 0)
+        const isOutdated = isDeviceFirmwareOutdated(d, effectiveLatestVersion)
         return (
           <div key={d.id} className={styles.compactRow}>
             <div className={styles.compactName} style={{ flex: 1, display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
               <span className={styles.networkDot} style={{ backgroundColor: d.is_online ? 'var(--accent-emerald)' : 'var(--text-tertiary)', boxShadow: 'none' }} />
               {d.name}
             </div>
-            <div className={styles.compactIp} style={{ width: '120px' }}>{d.ip_address}</div>
+            <div style={{ width: '130px', display: 'flex', alignItems: 'center' }}>
+              <IpChip ip={d.ip_address} compact />
+            </div>
+            <div style={{ width: '120px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+              <span style={{ fontVariantNumeric: 'tabular-nums', fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
+                {d.firmware_ver ? `v${String(d.firmware_ver).replace(/^v/i, '')}` : '—'}
+              </span>
+              {isOutdated && (
+                <span className={styles.firmwareTag} title="Firmware update available">Update</span>
+              )}
+            </div>
             <div style={{ width: '90px', color: d.is_online ? 'var(--text-primary)' : 'var(--text-tertiary)' }}>
               {d.is_online ? 'Online' : 'Offline'}
             </div>
@@ -548,5 +670,83 @@ function FavoritesView({ devices }) {
     <section className={styles.grid}>
       {favDevs.map(d => <DeviceCard key={d.id} device={d} />)}
     </section>
+  )
+}
+
+function FirmwareView({ devices, effectiveLatestVersion, latestReleaseInfo, isFetchingFirmware, onRefresh, onOpenNotes }) {
+  const outdatedDevices = devices.filter(d => isDeviceFirmwareOutdated(d, effectiveLatestVersion))
+  const upToDateDevices = devices.filter(d => !isDeviceFirmwareOutdated(d, effectiveLatestVersion))
+
+  return (
+    <div className={styles.firmwareContainer}>
+      <div className={styles.firmwareBanner}>
+        <div className={styles.firmwareBannerContent}>
+          <div className={styles.firmwareBannerTitle}>
+            <span>Firmware Status</span>
+            {effectiveLatestVersion && (
+              <span className={styles.firmwareVersionBadge}>Latest: v{effectiveLatestVersion}</span>
+            )}
+          </div>
+          <p className={styles.firmwareBannerSub}>
+            {outdatedDevices.length === 0
+              ? 'All controllers are running the current firmware release.'
+              : `${outdatedDevices.length} controller${outdatedDevices.length === 1 ? '' : 's'} behind current release.`}
+          </p>
+        </div>
+        <div className={styles.firmwareBannerActions}>
+          <button
+            type="button"
+            className={[styles.firmwareRefreshBtn, isFetchingFirmware && styles.firmwareRefreshSpinning].filter(Boolean).join(' ')}
+            onClick={onRefresh}
+            disabled={isFetchingFirmware}
+            title="Check for firmware updates now"
+            aria-label="Check for firmware updates now"
+          >
+            <RefreshIcon />
+          </button>
+          {effectiveLatestVersion && (
+            <button
+              type="button"
+              className={styles.firmwareNotesBtn}
+              onClick={onOpenNotes}
+            >
+              What's New in v{effectiveLatestVersion}
+            </button>
+          )}
+          <a
+            href="https://github.com/wled/WLED/releases"
+            target="_blank"
+            rel="noopener noreferrer"
+            className={styles.firmwareReleaseLink}
+          >
+            View WLED Releases
+          </a>
+        </div>
+      </div>
+
+      {outdatedDevices.length > 0 && (
+        <div className={styles.firmwareSection}>
+          <h2 className={styles.firmwareSectionTitle}>
+            Updates Available <span className={styles.firmwareCountBadge}>{outdatedDevices.length}</span>
+          </h2>
+          <section className={styles.grid}>
+            {outdatedDevices.map(d => (
+              <DeviceCard key={d.id} device={d} />
+            ))}
+          </section>
+        </div>
+      )}
+
+      <div className={styles.firmwareSection}>
+        <h2 className={styles.firmwareSectionTitle}>
+          {outdatedDevices.length > 0 ? 'Up To Date Devices' : 'All Devices'} <span className={styles.firmwareCountBadge}>{upToDateDevices.length}</span>
+        </h2>
+        <section className={styles.grid}>
+          {upToDateDevices.map(d => (
+            <DeviceCard key={d.id} device={d} />
+          ))}
+        </section>
+      </div>
+    </div>
   )
 }

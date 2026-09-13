@@ -1,0 +1,233 @@
+.overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.7);
+  backdrop-filter: blur(6px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 9999;
+  padding: 1.5rem;
+  animation: fadeIn 160ms var(--ease-out-expo);
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+.modal {
+  background: var(--surface-overlay);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-l);
+  box-shadow: var(--shadow-4);
+  width: 100%;
+  max-width: 680px;
+  max-height: 85vh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  animation: modalScaleIn 180ms var(--ease-out-expo);
+}
+
+@keyframes modalScaleIn {
+  from {
+    opacity: 0;
+    transform: scale(0.96) translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+.header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  padding: 1.25rem 1.5rem;
+  border-bottom: 1px solid var(--border-subtle);
+  background: var(--surface-card);
+}
+
+.headerTitleGroup {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.title {
+  font: var(--type-h2);
+  font-size: 1.25rem;
+  color: var(--text-primary);
+  margin: 0;
+}
+
+.subtitle {
+  font: var(--type-small);
+  color: var(--text-secondary);
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.versionBadge {
+  background: var(--accent-violet-subtle);
+  color: var(--accent-violet);
+  border: 1px solid var(--accent-violet);
+  padding: 1px 8px;
+  border-radius: var(--radius-pill);
+  font: var(--type-mono);
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
+.closeBtn {
+  background: none;
+  border: none;
+  color: var(--text-secondary);
+  cursor: pointer;
+  padding: 0.35rem;
+  border-radius: var(--radius-s);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background-color 120ms, color 120ms;
+}
+
+.closeBtn:hover {
+  background: var(--surface-input);
+  color: var(--text-primary);
+}
+
+.content {
+  padding: 1.5rem;
+  overflow-y: auto;
+  font: var(--type-body);
+  font-size: 0.9rem;
+  line-height: 1.6;
+  color: var(--text-secondary);
+}
+
+.content h1,
+.content h2,
+.content h3,
+.content h4 {
+  color: var(--text-primary);
+  margin-top: 1.25rem;
+  margin-bottom: 0.5rem;
+  font-weight: 600;
+}
+
+.content h2 {
+  font-size: 1.1rem;
+  border-bottom: 1px solid var(--border-subtle);
+  padding-bottom: 0.35rem;
+}
+
+.content h3 {
+  font-size: 0.98rem;
+  color: var(--accent-violet);
+}
+
+.content ul {
+  padding-left: 1.25rem;
+  margin: 0.5rem 0 1rem 0;
+}
+
+.content li {
+  margin-bottom: 0.35rem;
+}
+
+.content code {
+  font: var(--type-mono);
+  font-size: 0.8rem;
+  background: var(--surface-input);
+  padding: 2px 6px;
+  border-radius: var(--radius-s);
+  border: 1px solid var(--border-subtle);
+  color: var(--accent-cyan);
+}
+
+.content a {
+  color: var(--accent-violet);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.content a:hover {
+  color: var(--accent-cyan);
+}
+
+.content p {
+  margin-bottom: 0.75rem;
+}
+
+.noticeBox {
+  background: var(--surface-input);
+  border: 1px solid var(--border-subtle);
+  border-left: 3px solid var(--accent-violet);
+  padding: 0.75rem 1rem;
+  border-radius: var(--radius-m);
+  margin-bottom: 1rem;
+  font-size: 0.85rem;
+  color: var(--text-secondary);
+}
+
+.footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 1rem 1.5rem;
+  border-top: 1px solid var(--border-subtle);
+  background: var(--surface-card);
+  gap: 1rem;
+}
+
+.footerNote {
+  font-size: 0.78rem;
+  color: var(--text-tertiary);
+  flex: 1;
+}
+
+.footerActions {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.primaryBtn {
+  background: var(--accent-violet);
+  color: white;
+  border: none;
+  padding: 0.45rem 1rem;
+  border-radius: var(--radius-m);
+  font: var(--type-small);
+  font-weight: 500;
+  cursor: pointer;
+  transition: opacity 120ms;
+}
+
+.primaryBtn:hover {
+  opacity: 0.9;
+}
+
+.secondaryBtn {
+  background: var(--surface-input);
+  color: var(--text-primary);
+  border: 1px solid var(--border-default);
+  padding: 0.45rem 1rem;
+  border-radius: var(--radius-m);
+  font: var(--type-small);
+  font-weight: 500;
+  cursor: pointer;
+  transition: background-color 120ms;
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.secondaryBtn:hover {
+  background: var(--border-subtle);
+}

@@ -7,6 +7,7 @@ import { copyToClipboard } from '../../lib/clipboard.js'
 import styles from './Settings.module.css'
 
 import { useAutomationStore } from '../../stores/automationStore.js'
+import { usePWAInstall } from '../../hooks/usePWAInstall.js'
 
 const DEFAULTS = {
   poll_interval_ms: '5000',
@@ -25,6 +26,9 @@ const DEFAULTS = {
 export function Settings() {
   const addToast = useUIStore(s => s.addToast)
   const liveWeatherWs = useUIStore(s => s.weatherState)
+  const deviceIpClickAction = useUIStore(s => s.deviceIpClickAction)
+  const setDeviceIpClickAction = useUIStore(s => s.setDeviceIpClickAction)
+  const { showInstallButton, openModal: openInstallModal } = usePWAInstall()
   const [settings, setSettings] = useState(DEFAULTS)
   const [loading, setLoading]   = useState(true)
   const [saving, setSaving]     = useState(false)
@@ -172,6 +176,39 @@ export function Settings() {
                   onClick={() => handleChange('unit_system', 'metric')}
                 >
                   Metric (m)
+                </button>
+              </div>
+            </SettingField>
+
+            <SettingField
+              label="Device Card IP Click Action"
+              hint="Choose default behavior when clicking a controller's IP address on the dashboard"
+              id="ip_click_action"
+            >
+              <div className={styles.unitToggleGroup}>
+                <button
+                  type="button"
+                  className={[styles.unitToggleBtn, deviceIpClickAction === 'menu' && styles.unitToggleActive].filter(Boolean).join(' ')}
+                  onClick={() => setDeviceIpClickAction('menu')}
+                  title="Prompt with Open Web UI and Copy IP options"
+                >
+                  Action Menu
+                </button>
+                <button
+                  type="button"
+                  className={[styles.unitToggleBtn, deviceIpClickAction === 'open' && styles.unitToggleActive].filter(Boolean).join(' ')}
+                  onClick={() => setDeviceIpClickAction('open')}
+                  title="Directly launch the WLED instance in a new browser tab"
+                >
+                  Open in New Tab
+                </button>
+                <button
+                  type="button"
+                  className={[styles.unitToggleBtn, deviceIpClickAction === 'copy' && styles.unitToggleActive].filter(Boolean).join(' ')}
+                  onClick={() => setDeviceIpClickAction('copy')}
+                  title="Directly copy the IP address to clipboard"
+                >
+                  Copy IP
                 </button>
               </div>
             </SettingField>
@@ -793,6 +830,42 @@ export function Settings() {
             </div>
           </div>
         </section>
+
+        {/* Mobile Web App (dynamically hidden on desktop) */}
+        {showInstallButton && (
+          <section className={styles.section} aria-labelledby="mobile-app-heading">
+            <h2 id="mobile-app-heading" className={styles.sectionTitle}>Mobile Web App</h2>
+            <div className={styles.field}>
+              <div className={styles.fieldMeta}>
+                <span className={styles.fieldLabel}>Install WLEDashboard</span>
+                <p className={styles.fieldHint}>
+                  Run WLEDashboard as a standalone full-screen web app directly on your mobile device.
+                </p>
+              </div>
+              <div className={styles.fieldControl}>
+                <button
+                  type="button"
+                  className={styles.actionBtn}
+                  onClick={openInstallModal}
+                  style={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '8px',
+                    backgroundColor: 'var(--accent-violet-10)',
+                    color: 'var(--accent-violet)',
+                    borderColor: 'var(--accent-violet)',
+                    fontWeight: 600,
+                  }}
+                >
+                  <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+                    <path d="M8 2v8m0 0l-3-3m3 3l3-3M2 13h12" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+                  </svg>
+                  Install App to Home Screen
+                </button>
+              </div>
+            </div>
+          </section>
+        )}
 
         {/* About */}
         <section className={styles.section} aria-labelledby="about-heading">

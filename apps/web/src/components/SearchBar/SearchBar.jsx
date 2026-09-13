@@ -31,11 +31,12 @@ export function SearchBar({ value, onChange, filter = 'all', onFilter, resultCou
   }, [onChange])
 
   const FILTERS = [
-    { value: 'all',     label: 'All' },
-    { value: 'online',  label: 'Online' },
-    { value: 'offline', label: 'Offline' },
-    { value: 'on',      label: 'ON' },
-    { value: 'off',     label: 'OFF' },
+    { value: 'all',      label: 'All' },
+    { value: 'online',   label: 'Online' },
+    { value: 'offline',  label: 'Offline' },
+    { value: 'on',       label: 'ON' },
+    { value: 'off',      label: 'OFF' },
+    { value: 'firmware', label: 'Firmware' },
   ]
 
   return (

@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom'
 import { useSpringGroup } from '../../lib/spring.js'
 import { useDeviceStore } from '../../stores/deviceStore.js'
 import { useUIStore } from '../../stores/uiStore.js'
+import { isDeviceFirmwareOutdated } from '../../lib/firmware.js'
 import {
   extractDominantColor,
   extractAllSegmentColors,
@@ -14,6 +15,7 @@ import { Toggle } from '../Toggle/Toggle.jsx'
 import { Slider } from '../Slider/Slider.jsx'
 import { ColorPickerCompact } from '../ColorPicker/ColorPickerCompact.jsx'
 import { ContextMenu } from '../ContextMenu/ContextMenu.jsx'
+import { IpChip } from '../IpChip/IpChip.jsx'
 import { copyToClipboard } from '../../lib/clipboard.js'
 import styles from './DeviceCard.module.css'
 
@@ -46,7 +48,7 @@ export function DeviceCard({ device, isManualSort, dragAttributes, dragListeners
 
   const liveState     = device.liveState ?? {}
   const isOnline      = device.is_online === 1
-  const isFirmwareOutdated = device.firmware_ver && latestFirmwareVersion && device.firmware_ver !== latestFirmwareVersion
+  const isFirmwareOutdated = isDeviceFirmwareOutdated(device, latestFirmwareVersion)
 
   const fileInputRef = useRef(null)
   const isOn          = liveState.on ?? false
@@ -133,18 +135,10 @@ export function DeviceCard({ device, isManualSort, dragAttributes, dragListeners
     const g = parseInt(hex.slice(3, 5), 16)
     const b = parseInt(hex.slice(5, 7), 16)
     sendCommand(device.id, {
-      on: true,
+      seg: [{ id: 0, col: [[r, g, b]] }],
       lor: 0,
-      seg: [{ id: 0, fx: 0, col: [[r, g, b], [0, 0, 0], [0, 0, 0]] }],
     })
   }, [device.id, sendCommand])
-
-  const debouncedColor = useDebounce(commitColor, DEBOUNCE_MS)
-
-  const handleColorChange = useCallback((hex) => {
-    setLocalColor(hex)
-    debouncedColor(hex)
-  }, [debouncedColor])
 
   // Context menu
   const handleContextMenu = useCallback((e) => {
@@ -152,22 +146,24 @@ export function DeviceCard({ device, isManualSort, dragAttributes, dragListeners
     setContextMenu({ x: e.clientX, y: e.clientY })
   }, [])
 
-  const closeContextMenu = useCallback(() => setContextMenu(null), [])
+  const closeContextMenu = useCallback(() => {
+    setContextMenu(null)
+  }, [])
 
   // Delete
   const handleDelete = useCallback(async () => {
     try {
       await removeDevice(device.id)
-      addToast({ message: `"${device.name}" removed`, type: 'success' })
+      addToast({ message: `"${device.name}" removed`, type: 'info' })
     } catch {
       addToast({ message: 'Failed to remove device', type: 'error' })
     }
   }, [device.id, device.name, removeDevice, addToast])
 
-  // Identify (breathing pulse & full state snapshot restoration)
+  // Identify / Ping controller with pulse animation
   const [isIdentifying, setIsIdentifying] = useState(false)
-  const savedStateRef = useRef(null)
   const identifyTimerRef = useRef(null)
+  const savedStateRef    = useRef(null)
 
   const stopIdentify = useCallback(() => {
     if (identifyTimerRef.current) {
@@ -176,31 +172,29 @@ export function DeviceCard({ device, isManualSort, dragAttributes, dragListeners
     }
     setIsIdentifying(false)
     if (savedStateRef.current) {
-      const saved = savedStateRef.current
-      sendCommand(device.id, {
-        on: saved.on ?? true,
-        bri: saved.bri ?? 255,
-        seg: saved.seg ?? [{ fx: 0 }],
-      })
+      const snap = savedStateRef.current
       savedStateRef.current = null
+      sendCommand(device.id, {
+        on: snap.on ?? true,
+        bri: snap.bri ?? 128,
+        seg: snap.seg ? snap.seg.map(s => ({ id: s.id ?? 0, fx: s.fx ?? 0, col: s.col, sx: s.sx, ix: s.ix })) : [{ id: 0, fx: 0 }],
+      })
     }
   }, [device.id, sendCommand])
 
   const handleIdentify = useCallback(() => {
     if (isIdentifying) {
       stopIdentify()
-      addToast({ message: `Stopped identifying "${device.name}"`, type: 'info', duration: 2000 })
+      addToast({ message: `Stopped identifying "${device.name}"`, type: 'info' })
       return
     }
 
-    // Save full WLED state snapshot before identifying
     savedStateRef.current = device.liveState
       ? JSON.parse(JSON.stringify(device.liveState))
       : { on: isOn, bri: pctToWledBri(localBri) }
 
     setIsIdentifying(true)
 
-    // Vibrant breathing gold pulse effect (fx: 2 = Breathe, vibrant amber/gold color)
     sendCommand(device.id, {
       on: true,
       bri: 255,
@@ -208,13 +202,11 @@ export function DeviceCard({ device, isManualSort, dragAttributes, dragListeners
     })
     addToast({ message: `Identifying "${device.name}" (breathing gold pulse)...`, type: 'info', duration: 4000 })
 
-    // Auto-restore after 5 seconds if not manually toggled off
     identifyTimerRef.current = setTimeout(() => {
       stopIdentify()
     }, 5000)
   }, [isIdentifying, stopIdentify, device.id, device.name, device.liveState, isOn, localBri, sendCommand, addToast])
 
-  // Cleanup identify timer on unmount
   useEffect(() => {
     return () => {
       if (identifyTimerRef.current) clearTimeout(identifyTimerRef.current)
@@ -276,8 +268,6 @@ export function DeviceCard({ device, isManualSort, dragAttributes, dragListeners
     }
   }
 
-  // Document-level Escape handler while rename is active
-  // (input onKeyDown alone is unreliable if focus races with the setTimeout)
   useEffect(() => {
     if (!renaming) return
     const handleKey = (e) => {
@@ -287,6 +277,12 @@ export function DeviceCard({ device, isManualSort, dragAttributes, dragListeners
     document.addEventListener('keydown', handleKey)
     return () => document.removeEventListener('keydown', handleKey)
   }, [renaming, device.name, commitRename])
+
+  // Open in New Tab
+  const handleOpenInNewTab = useCallback((e) => {
+    if (e && e.stopPropagation) e.stopPropagation()
+    window.open(`http://${device.ip_address}`, '_blank', 'noopener,noreferrer')
+  }, [device.ip_address])
 
   // Copy IP
   const handleCopyIP = useCallback(async (e) => {
@@ -298,6 +294,16 @@ export function DeviceCard({ device, isManualSort, dragAttributes, dragListeners
       addToast({ message: `Failed to copy ${device.ip_address}`, type: 'error', duration: 3000 })
     }
   }, [device.ip_address, addToast])
+
+  // Restart Controller
+  const handleRestart = useCallback(async () => {
+    try {
+      await sendCommand(device.id, { rb: true })
+      addToast({ message: `Restarting "${device.name}"...`, type: 'info', duration: 5000 })
+    } catch (err) {
+      addToast({ message: `Failed to restart "${device.name}": ${err.message}`, type: 'error' })
+    }
+  }, [device.id, device.name, sendCommand, addToast])
 
   // Firmware Update
   const handleFileChange = async (e) => {
@@ -331,7 +337,7 @@ export function DeviceCard({ device, isManualSort, dragAttributes, dragListeners
   const contextItems = [
     {
       label: isFavorite ? 'Unpin from Favorites' : 'Pin to Favorites',
-      icon: isFavorite ? <span style={{fontSize: '14px'}}>⭐</span> : <span style={{fontSize: '14px'}}>☆</span>,
+      icon: <StarIcon filled={isFavorite} />,
       onClick: () => toggleFavorite(device.id),
     },
     { separator: true },
@@ -347,9 +353,20 @@ export function DeviceCard({ device, isManualSort, dragAttributes, dragListeners
       disabled: !isOnline,
     },
     {
+      label: 'Open Web UI',
+      icon: <ExternalLinkIcon />,
+      onClick: handleOpenInNewTab,
+    },
+    {
       label: 'Copy IP',
       icon: <CopyIcon />,
       onClick: handleCopyIP,
+    },
+    {
+      label: 'Restart Controller',
+      icon: <RestartIcon />,
+      onClick: handleRestart,
+      disabled: !isOnline,
     },
     {
       label: isFirmwareOutdated ? 'Update Firmware (New!)' : 'Update Firmware',
@@ -374,37 +391,36 @@ export function DeviceCard({ device, isManualSort, dragAttributes, dragListeners
     ].filter(Boolean).join(', '),
   }
 
-  const statusClass = !isOnline ? styles.offline : isOn ? styles.online : styles.standby
+  const statusDotClass = !isOnline ? styles.offlineDot : isOn ? styles.onlineDot : styles.standbyDot
 
   return (
     <>
       <article
-        className={[styles.card, !isOnline && styles.cardOffline, isIdentifying && styles.cardIdentifying].filter(Boolean).join(' ')}
+        ref={dragRef}
+        className={[styles.card, !isOnline && styles.cardOffline, isIdentifying && styles.identifyingPulse].filter(Boolean).join(' ')}
         style={cardStyle}
         onMouseEnter={handleMouseEnter}
         onMouseLeave={handleMouseLeave}
         onContextMenu={handleContextMenu}
-        aria-labelledby={`device-name-${device.id}`}
-        data-device-id={device.id}
+        aria-label={`${device.name}, ${isOnline ? (isOn ? 'On' : 'Off') : 'Offline'}`}
       >
-        {/* Header */}
-        <div className={styles.header}>
-          <div className={styles.identity}>
-            {isManualSort && (
-              <div 
-                className={styles.dragHandle} 
-                ref={dragRef}
-                {...(dragAttributes || {})} 
-                {...(dragListeners || {})}
-                title="Drag to reorder"
-              >
-                <DragIcon />
-              </div>
-            )}
-            <span
-              className={[styles.statusDot, statusClass].join(' ')}
-              aria-label={!isOnline ? 'Offline' : isOn ? 'On' : 'Standby'}
-            />
+        {/* Top bar: Drag handle, Name, Status dot, Firmware version, Options button, Power toggle */}
+        <div className={styles.topBar}>
+          {isManualSort ? (
+            <button
+              className={styles.dragHandle}
+              {...dragAttributes}
+              {...dragListeners}
+              aria-label={`Reorder ${device.name}`}
+              title="Drag to reorder"
+            >
+              <DragIcon />
+            </button>
+          ) : (
+            <div className={styles.dragPlaceholder} />
+          )}
+
+          <div className={styles.nameGroup}>
             {renaming ? (
               <input
                 ref={renameRef}
@@ -416,135 +432,189 @@ export function DeviceCard({ device, isManualSort, dragAttributes, dragListeners
                 aria-label="Device name"
               />
             ) : (
-              <span
-                id={`device-name-${device.id}`}
+              <h2
                 className={styles.name}
-                title={device.name}
                 onDoubleClick={startRename}
+                title="Double-click to rename"
               >
                 {device.name}
-              </span>
+              </h2>
             )}
+            <span
+              className={[styles.statusDot, statusDotClass].filter(Boolean).join(' ')}
+              title={isOnline ? (isOn ? 'Online, On' : 'Online, Standby') : 'Offline'}
+              aria-label={isOnline ? (isOn ? 'Online, On' : 'Online, Standby') : 'Offline'}
+            />
             {device.firmware_ver && (
-              <span className={styles.version} style={isFirmwareOutdated ? { color: 'var(--accent-amber)', fontWeight: 600 } : undefined}>
-                v{device.firmware_ver} {isFirmwareOutdated ? '⚠️' : ''}
+              <span
+                className={[styles.version, isFirmwareOutdated && styles.versionOutdated].filter(Boolean).join(' ')}
+                title={isFirmwareOutdated ? `Update available (latest: v${latestFirmwareVersion})` : `Firmware v${device.firmware_ver}`}
+              >
+                v{String(device.firmware_ver).replace(/^v/i, '')}
+                {isFirmwareOutdated && <WarningTriangleIcon />}
               </span>
             )}
           </div>
-          <div className={styles.headerActions}>
-            {isIdentifying && (
-              <button
-                className={styles.identifyingBadge}
-                onClick={stopIdentify}
-                title="Click to stop identifying"
-              >
-                Breathing... ✕
-              </button>
-            )}
+
+          <div className={styles.topActions}>
             <button
-              className={styles.menuBtn}
-              onClick={(e) => { e.stopPropagation(); setContextMenu({ x: e.clientX, y: e.clientY }) }}
-              aria-label="Device options"
-              title="Options"
+              className={styles.optionsBtn}
+              onClick={(e) => {
+                e.stopPropagation()
+                const rect = e.currentTarget.getBoundingClientRect()
+                setContextMenu({ x: rect.right, y: rect.bottom + 4 })
+              }}
+              aria-label={`Options for ${device.name}`}
+              title="Device options"
             >
               <DotsIcon />
             </button>
+
             <Toggle
               id={`power-${device.id}`}
               checked={isOn}
-              onChange={handlePowerToggle}
               disabled={!isOnline}
+              onChange={handlePowerToggle}
+              color={dominantColor}
             />
           </div>
         </div>
 
-        {/* Brightness */}
-        <div className={styles.section}>
-          <Slider
-            id={`bri-${device.id}`}
-            value={localBri}
-            onChange={handleBriChange}
-            onCommit={commitBrightness}
-            color={dominantColor}
-            label="Brightness"
-          />
+        {/* Live visual preview strip */}
+        <div className={styles.previewStrip} aria-hidden>
+          {segments.length > 1 ? (
+            <div className={styles.multiSegmentStrip}>
+              {segments.map((c, i) => (
+                <div
+                  key={i}
+                  className={styles.stripSegment}
+                  style={{
+                    backgroundColor: isOn ? (c.color || c) : 'var(--surface-input)',
+                    boxShadow: isOn ? briToGlow(bri, c.color || c) : 'none',
+                  }}
+                />
+              ))}
+            </div>
+          ) : (
+            <div
+              className={styles.singleStrip}
+              style={{
+                backgroundColor: isOn && dominantColor ? dominantColor : 'var(--surface-input)',
+                boxShadow: isOn && dominantColor ? briToGlow(bri, dominantColor) : 'none',
+              }}
+            />
+          )}
         </div>
 
-        {/* Color */}
-        <div className={styles.section}>
-          <p className={styles.sectionLabel}>Color</p>
-          <ColorPickerCompact
-            value={localColor || '#ff8844'}
-            onChange={handleColorChange}
-            onCommit={commitColor}
-          />
+        {/* Sliders: Brightness + Color */}
+        <div className={styles.controls}>
+          <div className={styles.sliderRow}>
+            <Slider
+              id={`bri-${device.id}`}
+              value={localBri}
+              min={0}
+              max={100}
+              step={1}
+              disabled={!isOnline || !isOn}
+              label="Brightness"
+              unit="%"
+              color={dominantColor}
+              onChange={handleBriChange}
+              onCommit={commitBrightness}
+            />
+          </div>
+
+          <div className={styles.colorRow}>
+            <ColorPickerCompact
+              color={localColor}
+              disabled={!isOnline || !isOn}
+              onChange={setLocalColor}
+              onCommit={commitColor}
+            />
+          </div>
         </div>
 
-        {/* Meta chips */}
-        <div className={styles.chips}>
-          <button 
-            className={[styles.chip, styles.actionChip].join(' ')} 
-            onClick={() => startChipEdit('effect', effectIndex ?? 0)}
-            title="Edit Effect ID"
-          >
-            {effectName}
-          </button>
-          
-          <button 
-            className={[styles.chip, styles.actionChip].join(' ')} 
-            onClick={() => startChipEdit('led_count', device.led_count || liveState?.info?.leds?.count || '')}
-            title="Edit LED Count"
-          >
-            {device.led_count || liveState?.info?.leds?.count || '?'} LEDs
-          </button>
+        {/* Metadata & Actions Chicklets: 2 dedicated static rows */}
+        <div className={styles.footer}>
+          {/* Row 1: Hardware Specs (Left) & Sync/Weather Action Chips (Right) */}
+          <div className={styles.chickletRow}>
+            <div className={styles.hardwareGroup}>
+              {device.led_count ? (
+                <span 
+                  className={[styles.chip, styles.editableChip, !device.led_density && styles.singleHardwareChip].filter(Boolean).join(' ')} 
+                  title="Click to edit LED count"
+                  onClick={() => startChipEdit('led_count', device.led_count)}
+                >
+                  {device.led_count} LEDs
+                </span>
+              ) : null}
 
-          <button 
-            className={[styles.chip, styles.actionChip].join(' ')} 
-            onClick={() => startChipEdit('led_density', device.led_density || 60)}
-            title="Edit LED Density (LEDs/m)"
-          >
-            {device.led_density || 60}/m
-          </button>
+              {device.led_density ? (
+                <span 
+                  className={[styles.chip, styles.editableChip, styles.densityChip].join(' ')} 
+                  title="Click to edit LED density"
+                  onClick={() => startChipEdit('led_density', device.led_density)}
+                >
+                  {device.led_density}/m
+                </span>
+              ) : null}
+            </div>
 
-          <button
-            className={[styles.chip, styles.actionChip].join(' ')}
-            style={device.spotify_sync_enabled ? { backgroundColor: 'var(--color-success, #10b981)', color: '#000' } : {}}
-            onClick={async () => {
-              try {
-                await updateDevice(device.id, { spotify_sync_enabled: device.spotify_sync_enabled ? 0 : 1 })
-                addToast({ message: `Spotify Sync ${device.spotify_sync_enabled ? 'Disabled' : 'Enabled'}`, type: 'success' })
-              } catch (err) {
-                addToast({ message: 'Failed to update Spotify sync', type: 'error' })
-              }
-            }}
-            title="Toggle Spotify Media Sync"
-          >
-            🎵 Sync
-          </button>
+            {/* Static right-aligned Action Chicklets (width-locked for symmetry) */}
+            <div className={styles.actionGroup}>
+              <button
+                className={[styles.chip, styles.actionChip].join(' ')}
+                style={device.spotify_sync_enabled ? { backgroundColor: 'var(--accent-emerald)', color: '#000' } : {}}
+                onClick={async () => {
+                  try {
+                    await updateDevice(device.id, { spotify_sync_enabled: device.spotify_sync_enabled ? 0 : 1 })
+                    addToast({ message: `Spotify Sync ${device.spotify_sync_enabled ? 'Disabled' : 'Enabled'}`, type: 'success' })
+                  } catch (err) {
+                    addToast({ message: 'Failed to update Spotify sync', type: 'error' })
+                  }
+                }}
+                title="Toggle Spotify Sync"
+              >
+                Sync
+              </button>
 
-          <button
-            className={[styles.chip, styles.actionChip].join(' ')}
-            style={device.weather_sync_enabled ? { backgroundColor: 'var(--accent-cyan)', color: '#000' } : {}}
-            onClick={async () => {
-              try {
-                await updateDevice(device.id, { weather_sync_enabled: device.weather_sync_enabled ? 0 : 1 })
-                addToast({ message: `Weather Sync ${device.weather_sync_enabled ? 'Disabled' : 'Enabled'}`, type: 'success' })
-              } catch (err) {
-                addToast({ message: 'Failed to update Weather sync', type: 'error' })
-              }
-            }}
-            title="Toggle Weather Sync"
-          >
-            Weather
-          </button>
+              <button
+                className={[styles.chip, styles.actionChip].join(' ')}
+                style={device.weather_sync_enabled ? { backgroundColor: 'var(--accent-cyan)', color: '#000' } : {}}
+                onClick={async () => {
+                  try {
+                    await updateDevice(device.id, { weather_sync_enabled: device.weather_sync_enabled ? 0 : 1 })
+                    addToast({ message: `Weather Sync ${device.weather_sync_enabled ? 'Disabled' : 'Enabled'}`, type: 'success' })
+                  } catch (err) {
+                    addToast({ message: 'Failed to update Weather sync', type: 'error' })
+                  }
+                }}
+                title="Toggle Weather Sync"
+              >
+                Weather
+              </button>
+            </div>
+          </div>
 
-          <button
-            className={[styles.chip, styles.ipChip].join(' ')}
-            onClick={handleCopyIP}
-            title="Click to copy IP"
-          >
-            {device.ip_address}
-          </button>
+          {/* Row 2: Lighting State Effect (Left) & Network IP Chicklet (Right) */}
+          <div className={styles.chickletRow}>
+            <div className={styles.effectGroup}>
+              {effectName && (
+                <span 
+                  className={[styles.chip, styles.effectChip, styles.editableChip].join(' ')} 
+                  title={`Click to edit effect: ${effectName}`}
+                  onClick={() => startChipEdit('effect', effectIndex ?? 0)}
+                >
+                  {effectName}
+                </span>
+              )}
+            </div>
+
+            {/* Static right-aligned IP Chicklet (width-locked for symmetry) */}
+            <div className={styles.ipGroup}>
+              <IpChip ip={device.ip_address} align="right" className={styles.cardIpChip} />
+            </div>
+          </div>
         </div>
 
         {/* Offline overlay */}
@@ -648,12 +718,31 @@ function DotsIcon() {
   )
 }
 
+function WarningTriangleIcon() {
+  return (
+    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" />
+      <line x1="12" y1="9" x2="12" y2="13" />
+      <line x1="12" y1="17" x2="12.01" y2="17" />
+    </svg>
+  )
+}
+
 function UpdateIcon() {
   return (
     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
       <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
       <polyline points="17 8 12 3 7 8"></polyline>
       <line x1="12" y1="3" x2="12" y2="15"></line>
+    </svg>
+  )
+}
+
+function RestartIcon() {
+  return (
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <polyline points="1 4 1 10 7 10" />
+      <path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10" />
     </svg>
   )
 }
@@ -711,6 +800,24 @@ function DeleteIcon() {
       <polyline points="1,3 2.5,3 13,3" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" />
       <path d="M4.5 3V2a1 1 0 011-1h3a1 1 0 011 1v1" stroke="currentColor" strokeWidth="1.2" />
       <path d="M2.5 3l.7 9a1 1 0 001 .9h5.6a1 1 0 001-.9l.7-9" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" />
+    </svg>
+  )
+}
+
+function ExternalLinkIcon() {
+  return (
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" />
+      <polyline points="15 3 21 3 21 9" />
+      <line x1="10" y1="14" x2="21" y2="3" />
+    </svg>
+  )
+}
+
+function StarIcon({ filled }) {
+  return (
+    <svg width="14" height="14" viewBox="0 0 24 24" fill={filled ? "currentColor" : "none"} stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
     </svg>
   )
 }

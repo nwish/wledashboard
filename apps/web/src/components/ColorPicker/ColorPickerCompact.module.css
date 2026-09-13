@@ -2,7 +2,13 @@
   width: 100%;
   display: flex;
   flex-direction: column;
-  gap: var(--sp-4);
+  gap: var(--sp-3);
+}
+
+.wrapper.disabled {
+  opacity: 0.45;
+  pointer-events: none;
+  cursor: not-allowed;
 }
 
 .row {
@@ -20,19 +26,45 @@
   width: 100%;
 }
 
-.swatch {
-  width: 32px;
-  height: 32px;
+/* ── Conic Gradient Rainbow Color Wheel ──────────────────────── */
+.swatchWrapper {
+  width: 26px;
+  height: 26px;
   border-radius: 50%;
-  border: 1px solid var(--border-subtle);
+  border: 1.5px solid var(--border-default);
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.4);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
   flex-shrink: 0;
-  transition: transform 120ms var(--ease-out-expo);
-  box-shadow: var(--shadow-1);
+  box-sizing: border-box;
+  background-color: var(--surface-base);
+  transition: transform 140ms var(--ease-out-expo), border-color 140ms, box-shadow 140ms;
 }
 
-.swatchLabel:hover .swatch {
-  transform: scale(1.05);
-  border-color: var(--border-default);
+.swatchWheel {
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  background: conic-gradient(
+    from 0deg,
+    #ff0000 0deg,
+    #ff8800 30deg,
+    #ffff00 60deg,
+    #00ff00 120deg,
+    #00ffff 180deg,
+    #0000ff 240deg,
+    #8800ff 270deg,
+    #ff00ff 300deg,
+    #ff0000 360deg
+  );
+}
+
+.swatchLabel:hover .swatchWrapper {
+  transform: scale(1.12);
+  border-color: var(--text-primary);
+  box-shadow: 0 0 10px rgba(255, 255, 255, 0.25);
 }
 
 .pickerHint {
@@ -41,6 +73,10 @@
   font-weight: 500;
   margin-left: var(--sp-3);
   user-select: none;
+}
+
+.swatchLabel:hover .pickerHint {
+  color: var(--text-primary);
 }
 
 .nativeColorInput {
@@ -65,7 +101,7 @@
   border: 1px solid var(--border-subtle);
   cursor: pointer;
   padding: 0;
-  transition: transform 120ms var(--ease-out-expo), border-color 120ms;
+  transition: transform 120ms var(--ease-out-expo), border-color 120ms, box-shadow 120ms;
 }
 
 .presetSwatch:hover {
@@ -74,5 +110,5 @@
 }
 
 .presetActive {
-  box-shadow: 0 0 0 2px var(--surface-base), 0 0 0 3px var(--accent-amber);
+  box-shadow: 0 0 0 2px var(--surface-base), 0 0 0 3.5px var(--accent-amber);
 }

@@ -12,37 +12,57 @@ const PRESET_COLORS = [
   '#8b5cf6', // Violet
 ]
 
-export function ColorPickerCompact({ value = '#ff8844', onChange, onCommit }) {
-  const currentHexRef = useRef(value)
+export function ColorPickerCompact({
+  color,
+  value,
+  disabled = false,
+  onChange,
+  onCommit,
+}) {
+  const activeColor = color || value || '#ff8844'
+  const currentHexRef = useRef(activeColor)
 
   useEffect(() => {
-    currentHexRef.current = value
-  }, [value])
+    currentHexRef.current = activeColor
+  }, [activeColor])
 
   const handleNativeColorInput = useCallback((e) => {
+    if (disabled) return
     const hex = e.target.value
     currentHexRef.current = hex
     onChange?.(hex)
     onCommit?.(hex)
-  }, [onChange, onCommit])
+  }, [disabled, onChange, onCommit])
 
   const handlePresetSelect = useCallback((hex) => {
+    if (disabled) return
     currentHexRef.current = hex
     onChange?.(hex)
     onCommit?.(hex)
-  }, [onChange, onCommit])
+  }, [disabled, onChange, onCommit])
 
   return (
-    <div className={styles.wrapper} aria-label="Color picker">
+    <div
+      className={[styles.wrapper, disabled && styles.disabled].filter(Boolean).join(' ')}
+      aria-label="Color picker"
+      aria-disabled={disabled}
+    >
       <div className={styles.row}>
-        <label className={styles.swatchLabel} title="Click to open full color picker">
-          <div className={styles.swatch} style={{ background: value }} />
+        <label
+          className={styles.swatchLabel}
+          title={disabled ? 'Device offline or powered off' : 'Click to open custom color picker'}
+        >
+          {/* Circular container with overflow clipping to eliminate square artifacts */}
+          <div className={styles.swatchWrapper}>
+            <div className={styles.swatchWheel} aria-hidden="true" />
+          </div>
           <input
             type="color"
-            value={value.length === 7 ? value : '#ff8844'}
+            value={activeColor.length === 7 ? activeColor : '#ff8844'}
             onChange={handleNativeColorInput}
+            disabled={disabled}
             className={styles.nativeColorInput}
-            aria-label="Native color picker"
+            aria-label="Custom color picker"
           />
           <span className={styles.pickerHint}>Custom Color...</span>
         </label>
@@ -53,7 +73,11 @@ export function ColorPickerCompact({ value = '#ff8844', onChange, onCommit }) {
           <button
             key={preset}
             type="button"
-            className={[styles.presetSwatch, value.toLowerCase() === preset.toLowerCase() && styles.presetActive].filter(Boolean).join(' ')}
+            disabled={disabled}
+            className={[
+              styles.presetSwatch,
+              activeColor.toLowerCase() === preset.toLowerCase() && styles.presetActive,
+            ].filter(Boolean).join(' ')}
             style={{ backgroundColor: preset }}
             onClick={() => handlePresetSelect(preset)}
             aria-label={`Select color ${preset}`}
