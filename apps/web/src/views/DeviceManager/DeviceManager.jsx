@@ -189,10 +189,11 @@ function DeviceRow({
       <div className={styles.rowInfo}>
         <span className={styles.rowName}>{device.name}</span>
         <div className={styles.rowMeta}>
-          <IpChip ip={device.ip_address} />
-          {device.led_count && <span className={styles.metaChip}>{device.led_count} LEDs</span>}
-          {device.firmware_ver && (
-            <span className={styles.metaChip}>v{String(device.firmware_ver).replace(/^v/i, '')}</span>
+          {(device.led_count || device.liveState?.info?.leds?.count) && (
+            <span className={styles.metaChip}>{device.led_count || device.liveState?.info?.leds?.count} LEDs</span>
+          )}
+          {(device.firmware_ver || device.liveState?.info?.ver) && (
+            <span className={styles.metaChip}>v{String(device.firmware_ver || device.liveState?.info?.ver).replace(/^v/i, '')}</span>
           )}
           {isOutdated && (
             <span className={styles.updateBadge} title="Firmware update available">Update</span>

@@ -62,7 +62,7 @@ export function createDevice({ name, ip_address, mac_address, firmware_ver, led_
 
 export function updateDevice(id, fields) {
   const db = getDb()
-  const allowed = ['name', 'ip_address', 'sort_order', 'led_density', 'led_count', 'spotify_sync_enabled', 'weather_sync_enabled']
+  const allowed = ['name', 'ip_address', 'sort_order', 'led_density', 'led_count', 'firmware_ver', 'spotify_sync_enabled', 'weather_sync_enabled']
   const sets = Object.keys(fields)
     .filter(k => allowed.includes(k))
     .map(k => `${k} = ?`)
@@ -154,7 +154,10 @@ export function startPolling(device) {
   if (pollTimers.has(device.id)) return
 
   const db = getDb()
-  let enriched = false  // only write info fields back once per session
+  let enriched = false  // tracks initial enrichment sync
+  let lastKnownVer = device.firmware_ver ?? null
+  let lastKnownLedCount = device.led_count ?? null
+  let lastKnownMac = device.mac_address ?? null
 
   // Connect direct WebSocket stream if available
   connectWledWebSocket(device, (deviceId, newState) => {
@@ -170,23 +173,35 @@ export function startPolling(device) {
       const combined = { ...result.state, info: result.info, _ts: Date.now() }
       stateCache.set(device.id, combined)
 
-      // On first successful contact, backfill info fields from the device itself
-      if (!enriched) {
+      const info = result.info ?? {}
+      const newMac = info.mac ? String(info.mac) : null
+      const newVer = info.ver != null ? String(info.ver) : null
+      const newLedCount = info.leds?.count != null ? Number(info.leds.count) : null
+
+      const needsInfoUpdate = !enriched ||
+        (newVer && newVer !== lastKnownVer) ||
+        (newLedCount != null && newLedCount !== lastKnownLedCount) ||
+        (newMac && newMac !== lastKnownMac)
+
+      if (needsInfoUpdate) {
         enriched = true
-        const info = result.info ?? {}
+        if (newVer) lastKnownVer = newVer
+        if (newLedCount != null) lastKnownLedCount = newLedCount
+        if (newMac) lastKnownMac = newMac
+
         db.prepare(`
           UPDATE devices SET
             is_online    = 1,
             last_seen_at = datetime('now'),
-            mac_address  = COALESCE(NULLIF(mac_address, ''), ?),
-            firmware_ver = COALESCE(NULLIF(firmware_ver, ''), ?),
-            led_count    = COALESCE(led_count, ?),
+            mac_address  = COALESCE(NULLIF(?, ''), mac_address),
+            firmware_ver = COALESCE(NULLIF(?, ''), firmware_ver),
+            led_count    = COALESCE(?, led_count),
             updated_at   = datetime('now')
           WHERE id = ?
         `).run(
-          info.mac  ?? null,
-          info.ver  ?? null,
-          info.leds?.count ?? null,
+          newMac,
+          newVer,
+          newLedCount,
           device.id,
         )
       } else {

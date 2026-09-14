@@ -445,12 +445,12 @@ export function DeviceCard({ device, isManualSort, dragAttributes, dragListeners
               title={isOnline ? (isOn ? 'Online, On' : 'Online, Standby') : 'Offline'}
               aria-label={isOnline ? (isOn ? 'Online, On' : 'Online, Standby') : 'Offline'}
             />
-            {device.firmware_ver && (
+            {(device.firmware_ver || device.liveState?.info?.ver) && (
               <span
                 className={[styles.version, isFirmwareOutdated && styles.versionOutdated].filter(Boolean).join(' ')}
-                title={isFirmwareOutdated ? `Update available (latest: v${latestFirmwareVersion})` : `Firmware v${device.firmware_ver}`}
+                title={isFirmwareOutdated ? `Update available (latest: v${latestFirmwareVersion})` : `Firmware v${device.firmware_ver || device.liveState?.info?.ver}`}
               >
-                v{String(device.firmware_ver).replace(/^v/i, '')}
+                v{String(device.firmware_ver || device.liveState?.info?.ver).replace(/^v/i, '')}
                 {isFirmwareOutdated && <WarningTriangleIcon />}
               </span>
             )}

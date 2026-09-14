@@ -24,7 +24,7 @@ export async function settingsRoutes(fastify) {
     return { api_token: newToken }
   })
 
-  const PatchSchema = z.record(z.string().min(1), z.union([z.string(), z.number()]))
+  const PatchSchema = z.record(z.string().min(1), z.union([z.string(), z.number(), z.boolean(), z.null()]))
 
   fastify.patch('/settings', async (req, reply) => {
     const parsed = PatchSchema.safeParse(req.body)
@@ -33,7 +33,8 @@ export async function settingsRoutes(fastify) {
     const stmt = db.prepare('INSERT OR REPLACE INTO settings (key, value) VALUES (?, ?)')
     db.transaction(() => {
       for (const [key, value] of Object.entries(parsed.data)) {
-        stmt.run(key, String(value))
+        const valToStore = value === null ? '' : String(value)
+        stmt.run(key, valToStore)
       }
     })()
     return { ok: true }

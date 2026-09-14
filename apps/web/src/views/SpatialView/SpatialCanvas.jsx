@@ -5,6 +5,7 @@ import * as THREE from 'three'
 import { useDeviceStore } from '../../stores/deviceStore.js'
 import { useSpatialStore } from '../../stores/spatialStore.js'
 import { extractDominantColor, wledBriToPct, pctToWledBri } from '../../lib/colors.js'
+import { settingsApi } from '../../lib/api.js'
 import styles from './SpatialView.module.css'
 
 // ─── Holographic Intro Component ──────────────────────────────────────────────
@@ -17,11 +18,9 @@ function HolographicIntro({ onComplete, sceneRef, unitSystem }) {
   const altRef = useRef(null)
 
   useEffect(() => {
-    import('../../lib/api.js').then(({ settingsApi }) => {
-      settingsApi.get().then(s => {
-        if (s.latitude && s.longitude) setLatLng([parseFloat(s.latitude), parseFloat(s.longitude)])
-      })
-    })
+    settingsApi.get().then(s => {
+      if (s.latitude && s.longitude) setLatLng([parseFloat(s.latitude), parseFloat(s.longitude)])
+    }).catch(() => {})
   }, [])
 
   const pingVec = useMemo(() => {
@@ -672,11 +671,9 @@ export function SpatialCanvas({ unitSystem = 'imperial' }) {
   const sceneRef = useRef(null)
 
   useEffect(() => {
-    import('../../lib/api.js').then(({ settingsApi }) => {
-      settingsApi.get().then(s => {
-        setIntroActive(s.spatial_intro_enabled !== 'false')
-      })
-    })
+    settingsApi.get().then(s => {
+      setIntroActive(s.spatial_intro_enabled !== 'false' && s.spatial_intro_enabled !== false)
+    }).catch(() => {})
   }, [])
 
   const handleIntroComplete = useCallback(() => {

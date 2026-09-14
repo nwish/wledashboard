@@ -535,8 +535,8 @@ function CompactView({ devices, effectiveLatestVersion }) {
     else if (sortKey === 'power') cmp = ((a.liveState?.on ? 1 : 0) - (b.liveState?.on ? 1 : 0))
     else if (sortKey === 'bri') cmp = (a.liveState?.bri ?? 0) - (b.liveState?.bri ?? 0)
     else if (sortKey === 'firmware') {
-      const vA = a.firmware_ver ? String(a.firmware_ver).replace(/^v/i, '') : ''
-      const vB = b.firmware_ver ? String(b.firmware_ver).replace(/^v/i, '') : ''
+      const vA = (a.firmware_ver || a.liveState?.info?.ver) ? String(a.firmware_ver || a.liveState?.info?.ver).replace(/^v/i, '') : ''
+      const vB = (b.firmware_ver || b.liveState?.info?.ver) ? String(b.firmware_ver || b.liveState?.info?.ver).replace(/^v/i, '') : ''
       cmp = vA.localeCompare(vB, undefined, { numeric: true })
     }
 
@@ -570,6 +570,7 @@ function CompactView({ devices, effectiveLatestVersion }) {
         const isOn = d.liveState?.on ?? false
         const briPct = wledBriToPct(d.liveState?.bri ?? 0)
         const isOutdated = isDeviceFirmwareOutdated(d, effectiveLatestVersion)
+        const dFirmware = d.firmware_ver || d.liveState?.info?.ver
         return (
           <div key={d.id} className={styles.compactRow}>
             <div className={styles.compactName} style={{ flex: 1, display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
@@ -581,7 +582,7 @@ function CompactView({ devices, effectiveLatestVersion }) {
             </div>
             <div style={{ width: '120px', display: 'flex', alignItems: 'center', gap: '6px' }}>
               <span style={{ fontVariantNumeric: 'tabular-nums', fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
-                {d.firmware_ver ? `v${String(d.firmware_ver).replace(/^v/i, '')}` : '—'}
+                {dFirmware ? `v${String(dFirmware).replace(/^v/i, '')}` : '—'}
               </span>
               {isOutdated && (
                 <span className={styles.firmwareTag} title="Firmware update available">Update</span>

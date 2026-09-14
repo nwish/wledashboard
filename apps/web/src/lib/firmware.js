@@ -45,7 +45,7 @@ export function getEffectiveLatestVersion(arg1, arg2) {
   }
 
   const deviceVers = devices
-    .map(d => d.firmware_ver)
+    .map(d => d.firmware_ver || d.liveState?.info?.ver)
     .filter(Boolean)
     .map(v => String(v).trim().replace(/^v/i, ''))
 
@@ -60,7 +60,9 @@ export function getEffectiveLatestVersion(arg1, arg2) {
  * Returns true if a device's firmware is behind the latest version.
  */
 export function isDeviceFirmwareOutdated(device, latestVersion) {
-  if (!device || !device.firmware_ver) return false
+  if (!device) return false
+  const currentVer = device.firmware_ver || device.liveState?.info?.ver
+  if (!currentVer) return false
   if (!latestVersion) return false
-  return isVersionBehind(device.firmware_ver, latestVersion)
+  return isVersionBehind(currentVer, latestVersion)
 }

@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { settingsApi, mqttApi, spotifyApi, weatherApi } from '../../lib/api.js'
 import { useUIStore } from '../../stores/uiStore.js'
 import { LocationMapPicker } from '../../components/LocationMapPicker/LocationMapPicker.jsx'
@@ -23,6 +23,30 @@ const DEFAULTS = {
   spatial_intro_enabled: 'true',
 }
 
+
+/*
+const CONTRIBUTORS = [
+  {
+    name: 'ccalbreath',
+    githubUrl: 'https://github.com/ccalbreath',
+    role: 'Bug Report',
+    description: 'Reported WLED firmware version not updating after OTA firmware updates.',
+    issueNumber: 1,
+    issueUrl: 'https://github.com/upioneer/WLEDashboard/issues/1',
+    fixedVersion: 'v0.19.0',
+  },
+  {
+    name: 'shr00mie',
+    githubUrl: 'https://github.com/shr00mie',
+    role: 'Bug Report',
+    description: 'Reported error when unchecking Orbital Intro toggle in Spatial View.',
+    issueNumber: 2,
+    issueUrl: 'https://github.com/upioneer/WLEDashboard/issues/2',
+    fixedVersion: 'v0.19.0',
+  },
+]
+*/
+
 export function Settings() {
   const addToast = useUIStore(s => s.addToast)
   const liveWeatherWs = useUIStore(s => s.weatherState)
@@ -31,7 +55,7 @@ export function Settings() {
   const { showInstallButton, openModal: openInstallModal } = usePWAInstall()
   const [settings, setSettings] = useState(DEFAULTS)
   const [loading, setLoading]   = useState(true)
-  const [saving, setSaving]     = useState(false)
+  const [saveStatus, setSaveStatus] = useState('idle') // 'idle' | 'saving' | 'saved' | 'error'
   const [showUnitPromptModal, setShowUnitPromptModal] = useState(false)
   const [spotifyConnected, setSpotifyConnected] = useState(false)
   const [copiedSpotifyUri, setCopiedSpotifyUri] = useState(false)
@@ -43,6 +67,17 @@ export function Settings() {
   const [showMappingEditor, setShowMappingEditor] = useState(false)
   const [customMappings, setCustomMappings] = useState(null)
   const { updateAvailable } = useUpdateCheck(__APP_VERSION__)
+
+  const debounceTimers = useRef({})
+  const saveStatusTimer = useRef(null)
+  const pendingUpdates = useRef({})
+
+  useEffect(() => {
+    return () => {
+      Object.values(debounceTimers.current).forEach(clearTimeout)
+      if (saveStatusTimer.current) clearTimeout(saveStatusTimer.current)
+    }
+  }, [])
 
   useEffect(() => {
     Promise.all([
@@ -68,50 +103,107 @@ export function Settings() {
     }
   }, [liveWeatherWs])
 
-  const handleChange = useCallback((key, value) => {
-    setSettings(s => ({ ...s, [key]: value }))
-  }, [])
+  const performSave = useCallback(async (updates) => {
+    setSaveStatus('saving')
+    try {
+      await settingsApi.update(updates)
+      if (updates.latitude !== undefined || updates.longitude !== undefined) {
+        useAutomationStore.getState().fetchSunTimes().catch(() => {})
+      }
+      setSaveStatus('saved')
+      if (saveStatusTimer.current) clearTimeout(saveStatusTimer.current)
+      saveStatusTimer.current = setTimeout(() => {
+        setSaveStatus('idle')
+      }, 2500)
+    } catch {
+      setSaveStatus('error')
+      addToast({ message: 'Failed to auto-save settings', type: 'error' })
+    }
+  }, [addToast])
 
-  const handleLocationChange = useCallback((lat, lng) => {
+  const handleImmediateChange = useCallback((key, value) => {
+    if (debounceTimers.current[key]) {
+      clearTimeout(debounceTimers.current[key])
+      delete debounceTimers.current[key]
+    }
+    delete pendingUpdates.current[key]
+    setSettings(s => ({ ...s, [key]: value }))
+    performSave({ [key]: value })
+  }, [performSave])
+
+  const handleDebouncedChange = useCallback((key, value) => {
+    setSettings(s => ({ ...s, [key]: value }))
+    pendingUpdates.current[key] = value
+
+    if (debounceTimers.current[key]) {
+      clearTimeout(debounceTimers.current[key])
+    }
+
+    debounceTimers.current[key] = setTimeout(() => {
+      delete debounceTimers.current[key]
+      const val = pendingUpdates.current[key]
+      delete pendingUpdates.current[key]
+      performSave({ [key]: val })
+    }, 400)
+  }, [performSave])
+
+  const handleBlur = useCallback((key) => {
+    if (debounceTimers.current[key]) {
+      clearTimeout(debounceTimers.current[key])
+      delete debounceTimers.current[key]
+      if (key in pendingUpdates.current) {
+        const val = pendingUpdates.current[key]
+        delete pendingUpdates.current[key]
+        performSave({ [key]: val })
+      }
+    }
+  }, [performSave])
+
+  const handleLocationChange = useCallback((lat, lng, immediate = true) => {
+    const latStr = String(lat)
+    const lngStr = String(lng)
     setSettings(s => {
-      const next = { ...s, latitude: String(lat), longitude: String(lng) }
       if (s.unit_prompt_shown !== 'true') {
         setShowUnitPromptModal(true)
       }
-      return next
+      return { ...s, latitude: latStr, longitude: lngStr }
     })
-  }, [])
+
+    if (immediate) {
+      if (debounceTimers.current.location) clearTimeout(debounceTimers.current.location)
+      delete pendingUpdates.current.latitude
+      delete pendingUpdates.current.longitude
+      performSave({ latitude: latStr, longitude: lngStr })
+    } else {
+      pendingUpdates.current.latitude = latStr
+      pendingUpdates.current.longitude = lngStr
+      if (debounceTimers.current.location) clearTimeout(debounceTimers.current.location)
+      debounceTimers.current.location = setTimeout(() => {
+        delete debounceTimers.current.location
+        const updates = {
+          latitude: pendingUpdates.current.latitude,
+          longitude: pendingUpdates.current.longitude,
+        }
+        delete pendingUpdates.current.latitude
+        delete pendingUpdates.current.longitude
+        performSave(updates)
+      }, 400)
+    }
+  }, [performSave])
 
   const handleSelectUnitPreference = useCallback(async (choice) => {
     const updated = {
-      ...settings,
       unit_prompt_shown: 'true',
     }
     if (choice) updated.unit_system = choice
 
-    setSettings(updated)
+    setSettings(s => ({ ...s, ...updated }))
     setShowUnitPromptModal(false)
-
-    try {
-      await settingsApi.update(updated)
-      addToast({ message: choice ? `Unit system set to ${choice}` : 'Location saved', type: 'success' })
-    } catch {
-      addToast({ message: 'Failed to update settings', type: 'error' })
+    performSave(updated)
+    if (choice) {
+      addToast({ message: `Unit system set to ${choice}`, type: 'success' })
     }
-  }, [settings, addToast])
-
-  const handleSave = useCallback(async () => {
-    setSaving(true)
-    try {
-      await settingsApi.update(settings)
-      await useAutomationStore.getState().fetchSunTimes()
-      addToast({ message: 'Settings saved and units updated', type: 'success' })
-    } catch {
-      addToast({ message: 'Failed to save settings', type: 'error' })
-    } finally {
-      setSaving(false)
-    }
-  }, [settings, addToast])
+  }, [performSave, addToast])
 
   if (loading) {
     return (
@@ -126,14 +218,40 @@ export function Settings() {
     <main className={styles.page} id="main-content">
       <header className={styles.pageHeader}>
         <h1 className={styles.title}>Settings</h1>
-        <button
-          className={styles.saveBtn}
-          onClick={handleSave}
-          disabled={saving}
-          aria-busy={saving}
-        >
-          {saving ? 'Saving...' : 'Save Changes'}
-        </button>
+        <div className={styles.saveStatusBadge} aria-live="polite">
+          {saveStatus === 'saving' && (
+            <span className={styles.savingText}>
+              <svg className={styles.savingSpinner} width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                <path d="M21 12a9 9 0 0 0-9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/>
+                <path d="M3 3v5h5"/>
+              </svg>
+              Saving...
+            </span>
+          )}
+          {saveStatus === 'saved' && (
+            <span className={styles.savedText}>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                <polyline points="20 6 9 17 4 12" />
+              </svg>
+              Saved
+            </span>
+          )}
+          {saveStatus === 'error' && (
+            <span className={styles.errorText}>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                <circle cx="12" cy="12" r="10"/>
+                <line x1="12" y1="8" x2="12" y2="12"/>
+                <line x1="12" y1="16" x2="12.01" y2="16"/>
+              </svg>
+              Failed to save
+            </span>
+          )}
+          {saveStatus === 'idle' && (
+            <span className={styles.idleText}>
+              All changes saved
+            </span>
+          )}
+        </div>
       </header>
 
       {updateAvailable && (
@@ -166,14 +284,14 @@ export function Settings() {
                 <button
                   type="button"
                   className={[styles.unitToggleBtn, settings.unit_system === 'imperial' && styles.unitToggleActive].filter(Boolean).join(' ')}
-                  onClick={() => handleChange('unit_system', 'imperial')}
+                  onClick={() => handleImmediateChange('unit_system', 'imperial')}
                 >
                   Imperial (ft)
                 </button>
                 <button
                   type="button"
                   className={[styles.unitToggleBtn, settings.unit_system === 'metric' && styles.unitToggleActive].filter(Boolean).join(' ')}
-                  onClick={() => handleChange('unit_system', 'metric')}
+                  onClick={() => handleImmediateChange('unit_system', 'metric')}
                 >
                   Metric (m)
                 </button>
@@ -230,8 +348,8 @@ export function Settings() {
               <label className={styles.switch}>
                 <input
                   type="checkbox"
-                  checked={settings.spatial_intro_enabled !== 'false'}
-                  onChange={(e) => handleChange('spatial_intro_enabled', e.target.checked ? 'true' : 'false')}
+                  checked={settings.spatial_intro_enabled !== 'false' && settings.spatial_intro_enabled !== false}
+                  onChange={(e) => handleImmediateChange('spatial_intro_enabled', e.target.checked ? 'true' : 'false')}
                 />
                 <span className={styles.slider}></span>
               </label>
@@ -255,7 +373,8 @@ export function Settings() {
               <NumberInput
                 id="poll_interval_ms"
                 value={settings.poll_interval_ms}
-                onChange={v => handleChange('poll_interval_ms', v)}
+                onChange={v => handleDebouncedChange('poll_interval_ms', v)}
+                onBlur={() => handleBlur('poll_interval_ms')}
                 min={1000}
                 max={60000}
                 step={500}
@@ -271,7 +390,8 @@ export function Settings() {
               <NumberInput
                 id="mdns_scan_interval_ms"
                 value={settings.mdns_scan_interval_ms}
-                onChange={v => handleChange('mdns_scan_interval_ms', v)}
+                onChange={v => handleDebouncedChange('mdns_scan_interval_ms', v)}
+                onBlur={() => handleBlur('mdns_scan_interval_ms')}
                 min={5000}
                 max={300000}
                 step={5000}
@@ -355,7 +475,8 @@ export function Settings() {
               <TextInput
                 id="spotify_client_id"
                 value={settings.spotify_client_id || ''}
-                onChange={v => handleChange('spotify_client_id', v)}
+                onChange={v => handleDebouncedChange('spotify_client_id', v)}
+                onBlur={() => handleBlur('spotify_client_id')}
                 placeholder="Enter Client ID"
               />
             </SettingField>
@@ -369,7 +490,8 @@ export function Settings() {
                 id="spotify_client_secret"
                 type="password"
                 value={settings.spotify_client_secret || ''}
-                onChange={v => handleChange('spotify_client_secret', v)}
+                onChange={v => handleDebouncedChange('spotify_client_secret', v)}
+                onBlur={() => handleBlur('spotify_client_secret')}
                 placeholder="Enter Client Secret"
               />
             </SettingField>
@@ -402,7 +524,7 @@ export function Settings() {
                   onClick={(e) => {
                     if (!settings.spotify_client_id || !settings.spotify_client_secret) {
                       e.preventDefault()
-                      addToast({ message: 'Please save your Client ID and Secret first!', type: 'error' })
+                      addToast({ message: 'Please enter your Spotify Client ID and Secret first!', type: 'error' })
                     }
                   }}
                 >
@@ -429,7 +551,8 @@ export function Settings() {
               <TextInput
                 id="openweathermap_api_key"
                 value={settings.openweathermap_api_key || ''}
-                onChange={v => handleChange('openweathermap_api_key', v)}
+                onChange={v => handleDebouncedChange('openweathermap_api_key', v)}
+                onBlur={() => handleBlur('openweathermap_api_key')}
                 placeholder="00000000000000000000000000000000"
               />
             </SettingField>
@@ -646,7 +769,7 @@ export function Settings() {
               <select
                 id="mqtt_enabled"
                 value={settings.mqtt_enabled}
-                onChange={e => handleChange('mqtt_enabled', e.target.value)}
+                onChange={e => handleImmediateChange('mqtt_enabled', e.target.value)}
                 className={styles.selectInput}
               >
                 <option value="0">Disabled</option>
@@ -663,7 +786,8 @@ export function Settings() {
                 type="text"
                 id="mqtt_broker_url"
                 value={settings.mqtt_broker_url}
-                onChange={e => handleChange('mqtt_broker_url', e.target.value)}
+                onChange={e => handleDebouncedChange('mqtt_broker_url', e.target.value)}
+                onBlur={() => handleBlur('mqtt_broker_url')}
                 className={styles.textInput}
               />
             </SettingField>
@@ -773,7 +897,7 @@ export function Settings() {
           <LocationMapPicker
             lat={settings.latitude}
             lng={settings.longitude}
-            onChange={(lat, lng) => handleLocationChange(lat, lng)}
+            onChange={(lat, lng) => handleLocationChange(lat, lng, true)}
           />
 
           <div className={styles.fields}>
@@ -785,7 +909,8 @@ export function Settings() {
               <TextInput
                 id="latitude"
                 value={settings.latitude || ''}
-                onChange={v => handleLocationChange(v, settings.longitude)}
+                onChange={v => handleLocationChange(v, settings.longitude, false)}
+                onBlur={() => handleBlur('location')}
                 placeholder="37.7749"
               />
             </SettingField>
@@ -798,7 +923,8 @@ export function Settings() {
               <TextInput
                 id="longitude"
                 value={settings.longitude || ''}
-                onChange={v => handleLocationChange(settings.latitude, v)}
+                onChange={v => handleLocationChange(settings.latitude, v, false)}
+                onBlur={() => handleBlur('location')}
                 placeholder="-122.4194"
               />
             </SettingField>
@@ -816,7 +942,7 @@ export function Settings() {
                     (pos) => {
                       const lat = pos.coords.latitude.toFixed(4)
                       const lng = pos.coords.longitude.toFixed(4)
-                      handleLocationChange(lat, lng)
+                      handleLocationChange(lat, lng, true)
                       addToast({ message: `Location detected: ${lat}, ${lng}`, type: 'success' })
                     },
                     (err) => {
@@ -866,8 +992,55 @@ export function Settings() {
             </div>
           </section>
         )}
+        {/* Community & Special Thanks (disabled pending design & privacy/endorsement policy review)
+        <section className={styles.section} aria-labelledby="community-heading">
+          <h2 id="community-heading" className={styles.sectionTitle}>Community & Special Thanks</h2>
+          <p className={styles.sectionDesc}>
+            Special thanks to community members whose bug reports, feedback, and contributions help make WLEDashboard better.
+          </p>
+          <div className={styles.contributorsGrid}>
+            {CONTRIBUTORS.map((c) => (
+              <div key={c.name} className={styles.contributorCard}>
+                <div className={styles.contributorHeader}>
+                  <a
+                    href={c.githubUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className={styles.contributorProfile}
+                  >
+                    <div className={styles.contributorAvatar}>
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+                        <path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0 0 24 12c0-6.63-5.37-12-12-12z"/>
+                      </svg>
+                    </div>
+                    <span>@{c.name}</span>
+                  </a>
+                  <span className={styles.contributorRoleBadge}>{c.role}</span>
+                </div>
+                <p className={styles.contributorDesc}>{c.description}</p>
+                <div className={styles.contributorFooter}>
+                  <a
+                    href={c.issueUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className={styles.issueLink}
+                  >
+                    <span>Issue #{c.issueNumber}</span>
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                      <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/>
+                      <polyline points="15 3 21 3 21 9"/>
+                      <line x1="10" y1="14" x2="21" y2="3"/>
+                    </svg>
+                  </a>
+                  <span className={styles.fixedBadge}>{c.fixedVersion}</span>
+                </div>
+              </div>
+            ))}
+          </div>
+        </section>
+        */}
 
-        {/* About */}
+{/* About */}
         <section className={styles.section} aria-labelledby="about-heading">
           <h2 id="about-heading" className={styles.sectionTitle}>About</h2>
           <div className={styles.aboutGrid}>
@@ -931,7 +1104,7 @@ function SettingField({ label, hint, id, children }) {
   )
 }
 
-function NumberInput({ id, value, onChange, min, max, step, unit }) {
+function NumberInput({ id, value, onChange, onBlur, min, max, step, unit }) {
   return (
     <div className={styles.numberInput}>
       <input
@@ -939,6 +1112,7 @@ function NumberInput({ id, value, onChange, min, max, step, unit }) {
         id={id}
         value={value}
         onChange={e => onChange(e.target.value)}
+        onBlur={onBlur}
         min={min}
         max={max}
         step={step}
@@ -949,7 +1123,7 @@ function NumberInput({ id, value, onChange, min, max, step, unit }) {
   )
 }
 
-function TextInput({ id, value, onChange, placeholder, type = "text" }) {
+function TextInput({ id, value, onChange, onBlur, placeholder, type = "text" }) {
   return (
     <div className={styles.numberInput}>
       <input
@@ -957,6 +1131,7 @@ function TextInput({ id, value, onChange, placeholder, type = "text" }) {
         id={id}
         value={value}
         onChange={e => onChange(e.target.value)}
+        onBlur={onBlur}
         placeholder={placeholder}
         className={styles.numberInputField}
       />

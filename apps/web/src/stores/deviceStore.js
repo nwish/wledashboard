@@ -114,9 +114,17 @@ export const useDeviceStore = create((set, get) => ({
   // Live state patch from WebSocket or polling response
   patchLiveState: (deviceId, liveState) => {
     set(s => ({
-      devices: s.devices.map(d =>
-        d.id === deviceId ? { ...d, liveState } : d
-      )
+      devices: s.devices.map(d => {
+        if (d.id !== deviceId) return d
+        const updated = { ...d, liveState }
+        if (liveState?.info?.ver && liveState.info.ver !== d.firmware_ver) {
+          updated.firmware_ver = String(liveState.info.ver)
+        }
+        if (liveState?.info?.leds?.count != null && liveState.info.leds.count !== d.led_count) {
+          updated.led_count = liveState.info.leds.count
+        }
+        return updated
+      })
     }))
   },
 

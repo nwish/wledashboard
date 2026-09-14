@@ -41,5 +41,26 @@ test('SQLite in-memory initialization and schema verification', () => {
   assert.equal(row.firmware_ver, '0.14.0')
   assert.equal(row.is_online, 1)
 
+  // Verify OTA firmware update query updates existing firmware version
+  const updateStmt = db.prepare(`
+    UPDATE devices SET
+      mac_address  = COALESCE(NULLIF(?, ''), mac_address),
+      firmware_ver = COALESCE(NULLIF(?, ''), firmware_ver),
+      led_count    = COALESCE(?, led_count),
+      updated_at   = datetime('now')
+    WHERE id = ?
+  `)
+  updateStmt.run('aabbcc112233', '0.15.0', 120, 'test-dev-1')
+
+  const updatedRow = db.prepare('SELECT * FROM devices WHERE id = ?').get('test-dev-1')
+  assert.equal(updatedRow.firmware_ver, '0.15.0', 'Firmware version updated after OTA')
+  assert.equal(updatedRow.mac_address, 'aabbcc112233', 'MAC address updated')
+  assert.equal(updatedRow.led_count, 120, 'LED count updated')
+
+  // Verify null or empty does not overwrite
+  updateStmt.run(null, '', null, 'test-dev-1')
+  const preservedRow = db.prepare('SELECT * FROM devices WHERE id = ?').get('test-dev-1')
+  assert.equal(preservedRow.firmware_ver, '0.15.0', 'Firmware version preserved when poll has empty ver')
+
   db.close()
 })

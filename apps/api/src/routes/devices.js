@@ -27,6 +27,7 @@ const UpdateDeviceSchema = z.object({
   sort_order: z.number().int().min(0).optional(),
   led_density: z.number().positive().optional(),
   led_count: z.number().int().positive().optional(),
+  firmware_ver: z.string().optional(),
 })
 
 const ReorderSchema = z.object({

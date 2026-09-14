@@ -158,17 +158,6 @@ Access the application in your browser at `http://localhost:3001`.
 
 ---
 
-## Verification & Testing
- 
-WLEDashboard includes automated unit and integration test suites:
-
-```bash
-# Execute automated test suite across all workspaces
-npm test
-```
-
----
-
 ## License & Copyright
 
 Copyright (c) 2026 Jasen Henry. All Rights Reserved. See [LICENSE.md](LICENSE.md) for details.

@@ -168,7 +168,9 @@ export function SpatialView() {
     fetchDevices()
     settingsApi.get().then(s => {
       if (s.unit_system) setUnitSystem(s.unit_system)
-      if (s.spatial_intro_enabled !== undefined) setIntroEnabled(s.spatial_intro_enabled)
+      if (s.spatial_intro_enabled !== undefined) {
+        setIntroEnabled(s.spatial_intro_enabled !== 'false' && s.spatial_intro_enabled !== false)
+      }
     }).catch(() => {})
   }, [fetchHierarchy, fetchDevices])
 
@@ -396,7 +398,7 @@ export function SpatialView() {
     const val = e.target.checked
     setIntroEnabled(val)
     try {
-      await settingsApi.update({ spatial_intro_enabled: val })
+      await settingsApi.update({ spatial_intro_enabled: val ? 'true' : 'false' })
       addToast({ message: val ? 'Orbital intro enabled' : 'Orbital intro disabled', type: 'success' })
     } catch {
       addToast({ message: 'Failed to update setting', type: 'error' })
