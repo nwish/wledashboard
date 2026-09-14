@@ -8,6 +8,7 @@ import { Automation } from '../views/Automation/Automation.jsx'
 import { SpatialView } from '../views/SpatialView/SpatialView.jsx'
 import StudioView from '../views/Studio/StudioView.jsx'
 import { Guides } from '../views/Guides/Guides.jsx'
+import { AdvancedView } from '../views/Advanced/AdvancedView.jsx'
 
 function RouteErrorBoundary() {
   const error = useRouteError();
@@ -34,6 +35,7 @@ const childRoutes = [
   { path: 'groups',        element: <Groups /> },
   { path: 'automation',    element: <Automation /> },
   { path: 'studio',        element: <StudioView /> },
+  { path: 'advanced',      element: <AdvancedView /> },
   { path: 'guides',        element: <Guides /> },
   { path: 'settings',      element: <Settings /> },
   { path: 'devices',       element: <DeviceManager /> },

@@ -17,6 +17,7 @@ const NAV_ITEMS = [
 export function Sidebar() {
   const collapsed = useUIStore(s => s.sidebarCollapsed)
   const toggle = useUIStore(s => s.toggleSidebar)
+  const advancedMode = useUIStore(s => s.advancedMode)
   const { updateAvailable } = useUpdateCheck(__APP_VERSION__)
 
   return (
@@ -59,6 +60,19 @@ export function Sidebar() {
 
       {/* Footer */}
       <div className={styles.footer}>
+        {advancedMode && (
+          <NavLink
+            to="/advanced"
+            className={({ isActive }) =>
+              [styles.navItem, isActive && styles.active].filter(Boolean).join(' ')
+            }
+            title="Advanced System Diagnostics & Tools"
+          >
+            <span className={styles.navIcon} aria-hidden><AdvancedIcon /></span>
+            {!collapsed && <span className={styles.navLabel}>Advanced</span>}
+          </NavLink>
+        )}
+
         <NavLink
           to="/guides"
           className={({ isActive }) =>
@@ -227,6 +241,16 @@ function GuidesIcon() {
       <line x1="4.5" y1="8.5" x2="7" y2="8.5" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" />
       <line x1="11" y1="5.5" x2="13.5" y2="5.5" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" />
       <line x1="11" y1="8.5" x2="13.5" y2="8.5" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" />
+    </svg>
+  )
+}
+
+function AdvancedIcon() {
+  return (
+    <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
+      <rect x="2" y="2" width="14" height="14" rx="3" stroke="currentColor" strokeWidth="1.5" />
+      <path d="M5.5 6.5L8 9L5.5 11.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+      <line x1="9.5" y1="12" x2="13" y2="12" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
     </svg>
   )
 }

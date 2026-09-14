@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect, useCallback } from "react"
+import { useState, useMemo, useEffect, useCallback, useRef } from "react"
 import { useSearchParams } from "react-router-dom"
 import { GUIDES, GUIDE_CATEGORIES } from "./guidesData.js"
 import { copyToClipboard } from "../../lib/clipboard.js"
@@ -22,16 +22,21 @@ export function Guides() {
     return GUIDES[0]?.id || ""
   })
 
-  // Synchronize when URL search param changes
+  const prevTopicRef = useRef(topicParam)
+
+  // Synchronize when URL search param changes externally
   useEffect(() => {
-    if (topicParam && GUIDES.some(g => g.id === topicParam)) {
-      setSelectedGuideId(topicParam)
+    if (topicParam && topicParam !== prevTopicRef.current) {
+      prevTopicRef.current = topicParam
       const matched = GUIDES.find(g => g.id === topicParam)
-      if (matched && activeCategory !== "all" && matched.category !== activeCategory) {
-        setActiveCategory("all")
+      if (matched) {
+        setSelectedGuideId(topicParam)
+        setActiveCategory(cat => (cat === "all" || cat === matched.category ? cat : "all"))
       }
+    } else if (!topicParam) {
+      prevTopicRef.current = null
     }
-  }, [topicParam, activeCategory])
+  }, [topicParam])
 
   // Filter guides by category and search query
   const filteredGuides = useMemo(() => {
@@ -55,7 +60,9 @@ export function Guides() {
   // Ensure an active guide is selected within filtered set
   useEffect(() => {
     if (filteredGuides.length > 0 && !filteredGuides.some(g => g.id === selectedGuideId)) {
-      setSelectedGuideId(filteredGuides[0].id)
+      const nextId = filteredGuides[0].id
+      prevTopicRef.current = nextId
+      setSelectedGuideId(nextId)
     }
   }, [filteredGuides, selectedGuideId])
 
@@ -64,9 +71,23 @@ export function Guides() {
   }, [selectedGuideId, filteredGuides])
 
   const handleSelectGuide = useCallback((id) => {
+    prevTopicRef.current = id
     setSelectedGuideId(id)
     setSearchParams({ topic: id })
   }, [setSearchParams])
+
+  const handleSelectCategory = useCallback((catId) => {
+    setActiveCategory(catId)
+    if (catId !== "all") {
+      const inCat = GUIDES.filter(g => g.category === catId)
+      if (inCat.length > 0 && !inCat.some(g => g.id === selectedGuideId)) {
+        const nextId = inCat[0].id
+        prevTopicRef.current = nextId
+        setSelectedGuideId(nextId)
+        setSearchParams({ topic: nextId })
+      }
+    }
+  }, [selectedGuideId, setSearchParams])
 
   const handleCopyCode = useCallback(async (codeText, desc) => {
     const success = await copyToClipboard(codeText)
@@ -127,7 +148,7 @@ export function Guides() {
                 key={cat.id}
                 type="button"
                 className={[styles.chip, activeCategory === cat.id && styles.chipActive].filter(Boolean).join(" ")}
-                onClick={() => setActiveCategory(cat.id)}
+                onClick={() => handleSelectCategory(cat.id)}
               >
                 {cat.label}
               </button>

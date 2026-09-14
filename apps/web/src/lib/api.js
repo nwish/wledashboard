@@ -143,3 +143,21 @@ export const weatherApi = {
   testCondition: (condition) => request('POST', '/weather/test', { condition }),
   saveMappings: (mappings) => request('PATCH', '/weather/mappings', mappings),
 }
+
+// ─── System / Advanced ───────────────────────────────────────────────────────
+export const systemApi = {
+  getHealth: () => request('GET', '/system/health'),
+  getLogs: (params) => {
+    const q = new URLSearchParams()
+    if (params?.level) q.set('level', params.level)
+    if (params?.limit) q.set('limit', params.limit)
+    const qs = q.toString()
+    return request('GET', `/system/logs${qs ? `?${qs}` : ''}`)
+  },
+  clearLogs: () => request('POST', '/system/logs/clear'),
+  runDiagnostics: () => request('POST', '/system/diagnostics/run'),
+  restartPoller: () => request('POST', '/system/actions/restart-poller'),
+  clearCache: () => request('POST', '/system/actions/clear-cache'),
+  resetSpatial: () => request('POST', '/system/actions/reset-spatial'),
+  factoryReset: (confirm) => request('POST', '/system/actions/factory-reset', { confirm }),
+}

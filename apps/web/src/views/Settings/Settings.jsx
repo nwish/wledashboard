@@ -21,6 +21,7 @@ const DEFAULTS = {
   spotify_client_id: '',
   spotify_client_secret: '',
   spatial_intro_enabled: 'true',
+  advanced_mode: 'false',
 }
 
 
@@ -52,6 +53,8 @@ export function Settings() {
   const liveWeatherWs = useUIStore(s => s.weatherState)
   const deviceIpClickAction = useUIStore(s => s.deviceIpClickAction)
   const setDeviceIpClickAction = useUIStore(s => s.setDeviceIpClickAction)
+  const advancedMode = useUIStore(s => s.advancedMode)
+  const setAdvancedMode = useUIStore(s => s.setAdvancedMode)
   const { showInstallButton, openModal: openInstallModal } = usePWAInstall()
   const [settings, setSettings] = useState(DEFAULTS)
   const [loading, setLoading]   = useState(true)
@@ -86,6 +89,9 @@ export function Settings() {
       weatherApi.getCurrent().catch(() => ({ state: null, mappings: null }))
     ]).then(([s, spot, weather]) => {
       setSettings({ ...DEFAULTS, ...s })
+      if (s.advanced_mode !== undefined) {
+        setAdvancedMode(s.advanced_mode === 'true')
+      }
       setSpotifyConnected(spot.connected)
       setWeatherData(weather.state)
       setCustomMappings(weather.mappings)
@@ -158,6 +164,12 @@ export function Settings() {
       }
     }
   }, [performSave])
+
+  const handleToggleAdvancedMode = useCallback((e) => {
+    const val = e.target.checked
+    setAdvancedMode(val)
+    handleImmediateChange('advanced_mode', val ? 'true' : 'false')
+  }, [handleImmediateChange, setAdvancedMode])
 
   const handleLocationChange = useCallback((lat, lng, immediate = true) => {
     const latStr = String(lat)
@@ -1040,7 +1052,34 @@ export function Settings() {
         </section>
         */}
 
-{/* About */}
+        {/* Advanced Mode */}
+        <section className={styles.section} aria-labelledby="advanced-heading">
+          <div className={styles.sectionHeader}>
+            <h2 id="advanced-heading" className={styles.sectionTitle}>Advanced Mode</h2>
+            <p className={styles.sectionSubtitle}>
+              Unlock developer telemetry, live activity stream console, low-level diagnostics, and administrative controls.
+            </p>
+          </div>
+          <div className={styles.fields}>
+            <SettingField
+              label="Enable Advanced Mode"
+              hint="Adds an Advanced system page to the sidebar featuring process health, real-time activity streaming, network diagnostics, and administrative tools."
+              id="advanced_mode"
+            >
+              <label className={styles.toggle}>
+                <input
+                  type="checkbox"
+                  id="advanced_mode"
+                  checked={advancedMode}
+                  onChange={handleToggleAdvancedMode}
+                />
+                <span className={styles.toggleSlider} />
+              </label>
+            </SettingField>
+          </div>
+        </section>
+
+        {/* About */}
         <section className={styles.section} aria-labelledby="about-heading">
           <h2 id="about-heading" className={styles.sectionTitle}>About</h2>
           <div className={styles.aboutGrid}>

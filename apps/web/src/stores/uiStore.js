@@ -17,11 +17,13 @@ export const useUIStore = create((set, get) => ({
   // ── Toast queue ─────────────────────────────────────────────────────────────
   toasts: [],
 
-  addToast: ({ message, type = 'info', duration = 4000 }) => {
+  addToast: ({ message, type = 'info', duration }) => {
+    // Error notifications remain persistent until explicitly dismissed by the user (duration = 0)
+    const effectiveDuration = duration !== undefined ? duration : (type === 'error' ? 0 : 4000)
     const id = `toast-${Date.now()}-${Math.random()}`
     set(s => ({ toasts: [...s.toasts, { id, message, type }] }))
-    if (duration > 0) {
-      setTimeout(() => get().removeToast(id), duration)
+    if (effectiveDuration > 0) {
+      setTimeout(() => get().removeToast(id), effectiveDuration)
     }
     return id
   },
@@ -80,6 +82,21 @@ export const useUIStore = create((set, get) => ({
   setDashboardFilter: (filter) => {
     try { localStorage.setItem('wled_dashboard_filter', filter) } catch {}
     set({ dashboardFilter: filter })
+  },
+
+  // ── Advanced Mode ───────────────────────────────────────────────────────────
+  advancedMode: (() => {
+    try {
+      return localStorage.getItem('wled_advanced_mode') === 'true'
+    } catch {
+      return false
+    }
+  })(),
+  setAdvancedMode: (val) => {
+    try {
+      localStorage.setItem('wled_advanced_mode', String(val))
+    } catch {}
+    set({ advancedMode: !!val })
   },
 
   // ── Device IP Click Behavior Preference ─────────────────────────────────────

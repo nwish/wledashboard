@@ -305,22 +305,74 @@ export function DeviceCard({ device, isManualSort, dragAttributes, dragListeners
     }
   }, [device.id, device.name, sendCommand, addToast])
 
-  // Firmware Update
+  // Firmware Update with Dual-Route Fallback
   const handleFileChange = async (e) => {
     const file = e.target.files?.[0]
     if (!file) return
 
     try {
       setIsUpdatingFirmware(true)
-      addToast({ message: `Uploading firmware to ${device.name}, please wait...`, type: 'info' })
+      addToast({ message: `Uploading firmware to ${device.name}, please wait...`, type: 'info', duration: 15000 })
       
-      const formData = new FormData()
-      formData.append('file', file)
-      const result = await uploadFirmware(device.id, formData)
-      
-      addToast({ message: result?.message || `${device.name} firmware updated successfully! Device is rebooting.`, type: 'success', duration: 8000 })
+      let uploadSuccess = false
+      let successMessage = ''
+      let proxyError = null
+
+      // Route 1: Upload via backend proxy (/api/devices/:id/firmware)
+      try {
+        const formData = new FormData()
+        formData.append('file', file)
+        const result = await uploadFirmware(device.id, formData)
+        uploadSuccess = true
+        successMessage = result?.message || `${device.name} firmware updated successfully! Device is rebooting.`
+      } catch (err) {
+        proxyError = err
+      }
+
+      // Route 2: Dual-Route Direct Browser Fallback (bypasses Docker/subnet proxy restrictions)
+      if (!uploadSuccess) {
+        const isMixedContent = window.location.protocol === 'https:'
+        if (!isMixedContent && device.ip_address) {
+          try {
+            addToast({
+              message: `Proxy update failed (${proxyError?.message || 'subnet restriction'}). Attempting direct browser connection to ${device.ip_address}...`,
+              type: 'info',
+              duration: 8000,
+            })
+
+            const directFd = new FormData()
+            directFd.append('update', file)
+            directFd.append('file', file)
+
+            const directRes = await fetch(`http://${device.ip_address}/update`, {
+              method: 'POST',
+              body: directFd,
+              signal: AbortSignal.timeout(120000),
+            })
+
+            const directText = await directRes.text().catch(() => '')
+            const cleanText = directText.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim()
+
+            if (!directRes.ok || cleanText.toLowerCase().includes('failed')) {
+              throw new Error(cleanText || directRes.statusText || 'Direct upload rejected by device')
+            }
+
+            uploadSuccess = true
+            successMessage = `${device.name} firmware updated directly! Device is rebooting.`
+          } catch (directErr) {
+            throw new Error(`Proxy error: ${proxyError?.message || 'Server upload failed'}. Direct error: ${directErr.message}`)
+          }
+        } else {
+          throw proxyError || new Error('Firmware upload failed')
+        }
+      }
+
+      addToast({ message: successMessage, type: 'success', duration: 10000 })
     } catch (err) {
-      addToast({ message: `Firmware upload failed for ${device.name}: ${err.message}`, type: 'error' })
+      addToast({
+        message: `Firmware upload failed for ${device.name}: ${err.message}`,
+        type: 'error',
+      })
     } finally {
       if (fileInputRef.current) fileInputRef.current.value = ''
       setIsUpdatingFirmware(false)

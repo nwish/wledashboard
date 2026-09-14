@@ -10,6 +10,7 @@ import {
   getCachedState,
   getAllCachedStates,
 } from '../services/deviceService.js'
+import { logEvent } from '../services/loggerService.js'
 
 // ─── Validation Schemas ───────────────────────────────────────────────────────
 
@@ -58,6 +59,7 @@ export async function deviceRoutes(fastify) {
     const parsed = CreateDeviceSchema.safeParse(req.body)
     if (!parsed.success) return reply.code(400).send({ error: parsed.error.flatten() })
     const device = createDevice(parsed.data)
+    logEvent('info', 'device', `Device registered: "${device.name}" (${device.ip_address})`)
     return reply.code(201).send(device)
   })
 
@@ -75,6 +77,7 @@ export async function deviceRoutes(fastify) {
     const device = getDevice(req.params.id)
     if (!device) return reply.code(404).send({ error: 'Device not found' })
     deleteDevice(req.params.id)
+    logEvent('warn', 'device', `Device removed: "${device.name}" (${device.ip_address})`)
     return reply.code(204).send()
   })
 
@@ -115,28 +118,82 @@ export async function deviceRoutes(fastify) {
     const data = await req.file()
     if (!data) return reply.code(400).send({ error: 'No file uploaded' })
 
+    if (data.file?.truncated) {
+      return reply.code(413).send({ error: 'Firmware binary exceeds upload size limit' })
+    }
+
+    const controller = new AbortController()
+    const timeout = setTimeout(() => controller.abort(), 120000)
+
     try {
       const buffer = await data.toBuffer()
       const blob = new Blob([buffer])
-      
+
       const formData = new FormData()
-      // WLED expects the file field to be named 'file' or 'update' depending on the fork, 
-      // but standard WLED expects 'file' for /update endpoint.
+      // WLED strictly requires the multipart file field name to be 'update'.
+      // We also append 'file' for compatibility with any custom third-party forks.
+      formData.append('update', blob, data.filename || 'update.bin')
       formData.append('file', blob, data.filename || 'update.bin')
 
-      const response = await fetch(`http://${device.ip_address}/update`, {
+      const skipValidation = req.query?.skipValidation === '1' || req.query?.skipValidation === 'true'
+      const targetUrl = skipValidation
+        ? `http://${device.ip_address}/update?skipValidation=1`
+        : `http://${device.ip_address}/update`
+
+      const response = await fetch(targetUrl, {
         method: 'POST',
         body: formData,
+        signal: controller.signal,
       })
 
+      const respText = await response.text().catch(() => '')
+      const cleanMessage = respText.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim()
+
       if (!response.ok) {
-        throw new Error(`WLED rejected update: ${response.statusText}`)
+        let errorDetail = cleanMessage || response.statusText || 'Update rejected by device'
+        if (response.status === 401) {
+          if (errorDetail.toLowerCase().includes('subnet')) {
+            errorDetail = 'Client is not on local subnet. Device security blocked OTA from server IP.'
+          } else if (errorDetail.toLowerCase().includes('unlock') || errorDetail.toLowerCase().includes('lock')) {
+            errorDetail = 'OTA is locked on this device. Please unlock OTA in WLED Security Settings.'
+          } else {
+            errorDetail = `Access denied by device (HTTP 401): ${errorDetail}`
+          }
+        } else if (response.status === 500) {
+          if (errorDetail.toLowerCase().includes('compatibility') || errorDetail.toLowerCase().includes('validation')) {
+            errorDetail = 'Release compatibility check failed. Binary does not match board architecture or requires skipValidation.'
+          } else {
+            errorDetail = `Device update failed (HTTP 500): ${errorDetail}`
+          }
+        }
+        logEvent('error', 'firmware', `Firmware upload to "${device.name}" rejected: ${errorDetail}`)
+        return reply.code(response.status >= 400 && response.status < 500 ? response.status : 502).send({
+          error: errorDetail,
+          wledStatus: response.status,
+          raw: cleanMessage,
+        })
       }
 
+      if (cleanMessage.toLowerCase().includes('failed') || cleanMessage.toLowerCase().includes('error')) {
+        logEvent('error', 'firmware', `Firmware upload to "${device.name}" failed: ${cleanMessage}`)
+        return reply.code(502).send({
+          error: `Device reported update failure: ${cleanMessage}`,
+          raw: cleanMessage,
+        })
+      }
+
+      logEvent('info', 'firmware', `Firmware update uploaded successfully to "${device.name}" (${device.ip_address})`)
       return { ok: true, message: 'Firmware update successful. Device is rebooting.' }
     } catch (err) {
       req.log.error(err)
-      return reply.code(502).send({ error: err.message || 'Failed to upload firmware to WLED' })
+      const isTimeout = err.name === 'AbortError' || err.name === 'TimeoutError'
+      const msg = isTimeout
+        ? 'Firmware upload timed out after 120 seconds. Check if controller is still reachable.'
+        : (err.message || 'Failed to upload firmware to WLED')
+      logEvent('error', 'firmware', `Firmware upload error for "${device?.name || 'device'}": ${msg}`)
+      return reply.code(502).send({ error: msg })
+    } finally {
+      clearTimeout(timeout)
     }
   })
 }

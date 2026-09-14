@@ -25,6 +25,8 @@ export function getDb() {
   return _db
 }
 
+export { DB_PATH, DATA_DIR }
+
 function applyMigrations(db) {
   db.exec(`
     CREATE TABLE IF NOT EXISTS schema_version (

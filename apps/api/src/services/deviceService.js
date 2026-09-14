@@ -1,5 +1,6 @@
 import { v4 as uuid } from 'uuid'
 import { getDb } from '../db/database.js'
+import { logEvent } from './loggerService.js'
 
 // ─── Internal State ───────────────────────────────────────────────────────────
 
@@ -215,9 +216,10 @@ export function startPolling(device) {
       const cached = stateCache.get(device.id) ?? {}
       const misses = (cached._misses ?? 0) + 1
       stateCache.set(device.id, { ...cached, _misses: misses, _ts: Date.now() })
-      if (misses >= 3) {
+      if (misses === 3) {
         db.prepare(`UPDATE devices SET is_online = 0 WHERE id = ?`).run(device.id)
         notify(device.id, { ...stateCache.get(device.id), _offline: true })
+        logEvent('warn', 'poller', `Device "${device.name}" (${device.ip_address}) missed 3 polls and is marked offline`)
       }
     }
   }
@@ -246,4 +248,35 @@ export function startAllPolling() {
     startPolling(device)
   }
   console.log(`[poller] Started polling ${devices.length} device(s)`)
+}
+
+export function clearStateCache() {
+  stateCache.clear()
+  logEvent('info', 'system', 'Device state cache cleared')
+}
+
+export function restartAllPolling() {
+  for (const timer of pollTimers.values()) {
+    clearInterval(timer)
+  }
+  pollTimers.clear()
+  stateCache.clear()
+  startAllPolling()
+  logEvent('info', 'poller', 'Poller restarted for all devices')
+}
+
+export function getPollerStats() {
+  const db = getDb()
+  const devices = listDevices()
+  const onlineCount = devices.filter(d => d.is_online === 1).length
+  const offlineCount = devices.filter(d => d.is_online === 0).length
+  const pollInterval = parseInt(db.prepare("SELECT value FROM settings WHERE key = 'poll_interval_ms'").get()?.value ?? '5000', 10)
+  return {
+    monitored_count: devices.length,
+    online_count: onlineCount,
+    offline_count: offlineCount,
+    active_timers: pollTimers.size,
+    cache_size: stateCache.size,
+    interval_ms: pollInterval,
+  }
 }

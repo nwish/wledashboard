@@ -32,6 +32,7 @@ import { matrixRoutes } from './routes/matrix.js'
 import { mcpRoutes } from './routes/mcp.js'
 import { spotifyRoutes } from './routes/spotify.js'
 import { weatherRoutes } from './routes/weather.js'
+import { systemRoutes } from './routes/system.js'
 import { initMqttService } from './services/mqttService.js'
 import { startAutomationScheduler, stopAutomationScheduler } from './services/automationService.js'
 import { startSpotifyPoller, subscribeToSpotify, getCurrentSpotifyState } from './services/spotifyService.js'
@@ -72,7 +73,7 @@ await fastify.register(websocket)
 
 await fastify.register(multipart, {
   limits: {
-    fileSize: 5 * 1024 * 1024, // 5MB limit for .bin firmware files
+    fileSize: 16 * 1024 * 1024, // 16MB limit for .bin firmware files
   }
 })
 
@@ -90,11 +91,10 @@ if (IS_PROD) {
     await fastify.register(staticFiles, {
       root: distPath,
       prefix: '/',
-      decorateReply: false,
     })
     // SPA fallback: return index.html for all non-API routes
     fastify.setNotFoundHandler((_req, reply) => {
-      reply.sendFile('index.html', distPath)
+      reply.sendFile('index.html')
     })
   } else {
     fastify.log.warn('Static web frontend directory not found. Running in API-only mode.')
@@ -125,6 +125,7 @@ await fastify.register(async (api) => {
   await api.register(mcpRoutes)
   await api.register(spotifyRoutes)
   await api.register(weatherRoutes)
+  await api.register(systemRoutes)
 }, { prefix: '/api' })
 
 // ─── WebSocket: Live State Push ───────────────────────────────────────────────

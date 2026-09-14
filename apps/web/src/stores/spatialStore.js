@@ -8,7 +8,13 @@ export const useSpatialStore = create((set, get) => ({
   selectedAnchorId: null,
   loading: true,
   error: null,
-  snapToGrid: true,
+  snapToGrid: (() => {
+    try {
+      return localStorage.getItem('wled_snap_to_grid') !== 'false'
+    } catch {
+      return true
+    }
+  })(),
 
   // ── Actions ─────────────────────────────────────────────────────────────────
   fetchHierarchy: async () => {
@@ -27,7 +33,12 @@ export const useSpatialStore = create((set, get) => ({
 
   selectRoom: (roomId) => set({ selectedRoomId: roomId, selectedAnchorId: null }),
   selectAnchor: (anchorId) => set({ selectedAnchorId: anchorId }),
-  setSnapToGrid: (val) => set({ snapToGrid: val }),
+  setSnapToGrid: (val) => {
+    try {
+      localStorage.setItem('wled_snap_to_grid', String(val))
+    } catch {}
+    set({ snapToGrid: val })
+  },
 
   createDwelling: async (data) => {
     const dwelling = await spatialApi.createDwelling(data)

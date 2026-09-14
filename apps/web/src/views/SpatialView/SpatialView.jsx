@@ -399,7 +399,6 @@ export function SpatialView() {
     setIntroEnabled(val)
     try {
       await settingsApi.update({ spatial_intro_enabled: val ? 'true' : 'false' })
-      addToast({ message: val ? 'Orbital intro enabled' : 'Orbital intro disabled', type: 'success' })
     } catch {
       addToast({ message: 'Failed to update setting', type: 'error' })
     }
