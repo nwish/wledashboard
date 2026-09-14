@@ -8,43 +8,51 @@ A high performance, local first control surface for WLED devices. Control 1 to 1
 
 ### Dashboard
 
-Control all your WLED devices with real time power toggles, dynamic brightness sliders with responsive color glow, compact inline color pickers, and live LED segment previews.
+Control all your WLED devices with real time power toggles, dynamic brightness sliders with responsive color glow, anti-aliased conic-gradient color wheel pickers, four corner symmetrical hardware and action chicklets, and live telemetry headers.
 
-![WLEDashboard Main Dashboard](project_details/changelog/v0.12.0/screenshots/01-dashboard-grid.png)
+![WLEDashboard Main Dashboard](project_details/changelog/v0.18.0/screenshots/01-dashboard-grid.png)
 
 ### Group Management
 
 Organize devices into physical zones, synchronized scenes, and custom lighting clusters. Control group power, group brightness, and group colors simultaneously with automatic device command distribution.
 
-![WLEDashboard Groups View](project_details/changelog/v0.3.0/screenshots/01-groups-view.png)
+![WLEDashboard Groups View](project_details/changelog/v0.18.0/screenshots/02-groups-view.png)
 
 ### Group Editor Modal
 
 Easily build and customize lighting groups with custom color palettes, group type classifications (Zone, Scene, Sync, Custom), device member selection, and nested child group clustering.
 
-![Group Editor Modal](project_details/changelog/v0.3.0/screenshots/02-group-modal.png)
+![Group Editor Modal](project_details/changelog/v0.18.0/screenshots/03-group-modal.png)
 
 ### Automation & Schedules
 
 Automate lighting based on fixed times or astronomical sunrise/sunset triggers (`suncalc`). Build multi-step routine timelines with custom delay intervals between step actions.
 
+![Automation & Schedules](project_details/changelog/v0.18.0/screenshots/04-automation-view.png)
+
 ### 3D Spatial Viewport
 
-Experience your lighting in 3D space with Three.js / React Three Fiber. View procedural room geometries, wireframe wall bounds, and real-time emissive LED light strips that pulse and glow matching actual device color and brightness. Includes a stunning holographic Earth intro sequence.
+Experience your lighting in 3D space with Three.js and React Three Fiber. View procedural room geometries, wireframe wall bounds, and real-time emissive LED light strips that pulse and glow matching actual device color and brightness. Includes a stunning holographic Earth orbital sequence.
 
-![3D Spatial Viewport](project_details/changelog/v0.13.0/screenshots/01-holographic-intro-altimeter.png)
+![3D Spatial Viewport](project_details/changelog/v0.18.0/screenshots/05-spatial-view.png)
 
 ### Effect Studio & Timeline Animator
 
 Browse WLED built-in effect catalogs, build custom multi-track keyframe animation timelines, design multi-stop color gradients, and simulate light patterns on a live 60-pixel LED strip canvas.
 
-![Effect Studio](project_details/changelog/v0.6.0/screenshots/01-studio-preset-browser.png)
+![Effect Studio](project_details/changelog/v0.18.0/screenshots/06-studio-view.png)
 
-### Spotify Media Integration
+### How-To & Architecture Documentation Hub
 
-Fully integrated Spotify Web API player. See real-time album art, track progress, and playback controls natively in your dashboard. Synchronize dynamic WLED lighting effects to your currently playing audio.
+In-depth documentation hub integrated directly into the application with interactive tables, mobile installation instructions, group synchronization mechanics, and Home Assistant setup guides.
 
-![Spotify Media Player](project_details/changelog/v0.12.0/screenshots/04-dashboard-media.png)
+![Documentation Hub](project_details/changelog/v0.18.0/screenshots/07-guides-docs.png)
+
+### Mobile Progressive Web App (PWA)
+
+Install WLEDashboard directly to your mobile home screen on iOS and Android for a seamless full-screen native experience without browser navigation bars or address controls.
+
+![Mobile Progressive Web App](project_details/changelog/v0.18.0/screenshots/08-mobile-dashboard.png)
 
 ---
 
@@ -88,43 +96,9 @@ Fully integrated Spotify Web API player. See real-time album art, track progress
 
 ---
 
-## Quick Start
+## Deployment (Docker Compose)
 
-### Prerequisites
-
-* Node.js 22 or higher
-* npm 10 or higher
-
-### Installation
-
-```bash
-# Clone repository
-git clone https://github.com/upioneer/WLEDashboard.git
-cd WLEDashboard
-
-# Install dependencies across workspaces
-npm install
-```
-
-### Running in Development Mode
-
-Run the API and web app in two terminal windows:
-
-```bash
-# Terminal 1: API Server (http://localhost:3001)
-npm run dev:api
-
-# Terminal 2: Web App (http://localhost:5173)
-npm run dev:web
-```
-
-Open `http://localhost:5173` in your browser.
-
----
-
-## Docker Deployment
-
-WLEDashboard provides pre-built container images published to the GitHub Container Registry (`ghcr.io/upioneer/wledashboard:latest`).
+WLEDashboard provides pre-built container images published to the GitHub Container Registry (`ghcr.io/upioneer/wledashboard:latest`). To ensure a consistent, zero-configuration environment across all operating systems, deployment via Docker Compose is the recommended installation method.
 
 ### Using Docker Compose (Recommended)
 
@@ -185,12 +159,12 @@ Access the application in your browser at `http://localhost:3001`.
 ---
 
 ## Verification & Testing
-
-WLEDashboard includes automated Playwright end to end test suites:
+ 
+WLEDashboard includes automated unit and integration test suites:
 
 ```bash
-# Execute functional test suite
-node .skills/playwright/run.js project_details/playbooks/test-v0.3.0.js
+# Execute automated test suite across all workspaces
+npm test
 ```
 
 ---

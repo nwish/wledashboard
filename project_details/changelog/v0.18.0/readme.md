@@ -17,6 +17,7 @@ Version 0.18.0 introduces Progressive Web App (PWA) standalone mobile installati
 * **Documentation Guide:** Added the "Mobile App Installation: Add to Home Screen (iOS & Android)" guide under a new "Mobile & PWA" category in Guides & Docs.
 
 ![Mobile iOS Installation Modal](screenshots/mobile_ios_install_modal.png)
+![Mobile Android Installation Modal](screenshots/mobile_android_install_modal.png)
 ![Mobile App Documentation Guide](screenshots/desktop_guides_pwa_guide.png)
 
 ### 2. Device Card Polish & Conic-Gradient Color Wheel
