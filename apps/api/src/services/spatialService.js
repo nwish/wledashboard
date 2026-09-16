@@ -1,9 +1,13 @@
 import { v4 as uuidv4 } from 'uuid'
 import { getDb } from '../db/database.js'
+import { isDemoMode, getDemoSpatialHierarchy } from './demoData.js'
 
 // ─── Spatial Hierarchy CRUD ───────────────────────────────────────────────────
 
 export function getSpatialHierarchy() {
+  if (isDemoMode()) {
+    return getDemoSpatialHierarchy()
+  }
   const db = getDb()
 
   const dwellings = db.prepare('SELECT * FROM dwellings ORDER BY sort_order ASC').all()

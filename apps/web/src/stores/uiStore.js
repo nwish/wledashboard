@@ -49,6 +49,10 @@ export const useUIStore = create((set, get) => ({
   headerAccentColor: null,
   setHeaderAccentColor: (color) => set({ headerAccentColor: color }),
 
+  // ── Demo Mode ───────────────────────────────────────────────────────────────
+  demoMode: false,
+  setDemoMode: (val) => set({ demoMode: !!val }),
+
   // ── Spotify State ───────────────────────────────────────────────────────────
   spotifyState: { is_playing: false },
   setSpotifyState: (state) => set({ spotifyState: state }),

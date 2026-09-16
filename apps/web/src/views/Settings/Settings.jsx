@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
+import { Link } from 'react-router-dom'
 import { settingsApi, mqttApi, spotifyApi, weatherApi, configApi } from '../../lib/api.js'
 import { useUIStore } from '../../stores/uiStore.js'
 import { LocationMapPicker } from '../../components/LocationMapPicker/LocationMapPicker.jsx'
@@ -7,6 +8,9 @@ import { copyToClipboard } from '../../lib/clipboard.js'
 import styles from './Settings.module.css'
 
 import { useAutomationStore } from '../../stores/automationStore.js'
+import { useDeviceStore } from '../../stores/deviceStore.js'
+import { useGroupStore } from '../../stores/groupStore.js'
+import { useSpatialStore } from '../../stores/spatialStore.js'
 import { usePWAInstall } from '../../hooks/usePWAInstall.js'
 
 const DEFAULTS = {
@@ -22,11 +26,13 @@ const DEFAULTS = {
   spotify_client_secret: '',
   spatial_intro_enabled: 'true',
   advanced_mode: 'false',
+  demo_mode: '0',
 }
 
 
 const CONTRIBUTORS = [
   { name: 'ccalbreath', platform: 'github' },
+  { name: 'Far_Confusion4003', platform: 'reddit' },
   { name: 'johnsonflix', platform: 'reddit' },
   { name: 'Netmindz', platform: 'reddit' },
   { name: 'New-Lawyer-2913', platform: 'reddit' },
@@ -50,13 +56,21 @@ export function Settings() {
   const setDeviceIpClickAction = useUIStore(s => s.setDeviceIpClickAction)
   const advancedMode = useUIStore(s => s.advancedMode)
   const setAdvancedMode = useUIStore(s => s.setAdvancedMode)
+  const demoMode = useUIStore(s => s.demoMode)
+  const setDemoMode = useUIStore(s => s.setDemoMode)
   const { showInstallButton, openModal: openInstallModal } = usePWAInstall()
   const [settings, setSettings] = useState(DEFAULTS)
   const [loading, setLoading]   = useState(true)
   const [saveStatus, setSaveStatus] = useState('idle') // 'idle' | 'saving' | 'saved' | 'error'
   const [showUnitPromptModal, setShowUnitPromptModal] = useState(false)
+  const [showDemoModal, setShowDemoModal] = useState(false)
   const [spotifyConnected, setSpotifyConnected] = useState(false)
   const [copiedSpotifyUri, setCopiedSpotifyUri] = useState(false)
+  const spotifyRedirectUri = typeof window !== 'undefined'
+    ? (window.location.protocol === 'https:' || window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
+        ? `${window.location.origin}/api/spotify/callback`
+        : `http://localhost:${window.location.port || '8301'}/api/spotify/callback`)
+    : ''
   const [copiedApiToken, setCopiedApiToken]     = useState(false)
   const [copiedUpdateCmd, setCopiedUpdateCmd]   = useState(false)
   const [showApiToken, setShowApiToken]         = useState(false)
@@ -95,6 +109,9 @@ export function Settings() {
       setSettings({ ...DEFAULTS, ...s })
       if (s.advanced_mode !== undefined) {
         setAdvancedMode(s.advanced_mode === 'true')
+      }
+      if (s.demo_mode === '1' || s.demo_mode === 'true') {
+        setDemoMode(true)
       }
       setSpotifyConnected(spot.connected)
       setWeatherData(weather.state)
@@ -174,6 +191,51 @@ export function Settings() {
     setAdvancedMode(val)
     handleImmediateChange('advanced_mode', val ? 'true' : 'false')
   }, [handleImmediateChange, setAdvancedMode])
+
+  const handleConfirmEnableDemo = useCallback(async () => {
+    try {
+      setShowDemoModal(false)
+      await settingsApi.update({ demo_mode: '1' })
+      setDemoMode(true)
+      setSettings(s => ({ ...s, demo_mode: '1' }))
+      await Promise.all([
+        useDeviceStore.getState().fetchDevices(),
+        useGroupStore.getState().fetchGroups(),
+        useSpatialStore.getState().fetchHierarchy(),
+      ])
+      addToast({
+        message: 'Demo Mode enabled. Virtual controllers and companion floorplan loaded.',
+        type: 'success',
+      })
+    } catch (err) {
+      addToast({
+        message: `Failed to enable demo mode: ${err.message}`,
+        type: 'error',
+      })
+    }
+  }, [setDemoMode, addToast])
+
+  const handleDisableDemo = useCallback(async () => {
+    try {
+      await settingsApi.update({ demo_mode: '0' })
+      setDemoMode(false)
+      setSettings(s => ({ ...s, demo_mode: '0' }))
+      await Promise.all([
+        useDeviceStore.getState().fetchDevices(),
+        useGroupStore.getState().fetchGroups(),
+        useSpatialStore.getState().fetchHierarchy(),
+      ])
+      addToast({
+        message: 'Demo Mode disabled. Physical devices restored.',
+        type: 'success',
+      })
+    } catch (err) {
+      addToast({
+        message: `Failed to exit demo mode: ${err.message}`,
+        type: 'error',
+      })
+    }
+  }, [setDemoMode, addToast])
 
   const handleLocationChange = useCallback((lat, lng, immediate = true) => {
     const latStr = String(lat)
@@ -462,6 +524,37 @@ export function Settings() {
                 </button>
               </div>
             </SettingField>
+
+            <SettingField
+              label="Interactive Demo Mode"
+              hint="Test-drive WLEDashboard with simulated virtual controllers and a companion 3D spatial floorplan"
+              id="demo_mode"
+            >
+              {demoMode ? (
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                  <span className={styles.demoActiveBadge}>
+                    <span className={styles.demoActiveDot}></span>
+                    Active
+                  </span>
+                  <button
+                    type="button"
+                    className={styles.unitToggleBtn}
+                    onClick={handleDisableDemo}
+                  >
+                    Exit Demo Mode
+                  </button>
+                </div>
+              ) : (
+                <button
+                  type="button"
+                  className={styles.promptBtnPrimary}
+                  onClick={() => setShowDemoModal(true)}
+                  style={{ height: '36px', padding: '0 1.25rem' }}
+                >
+                  Enable Demo Mode
+                </button>
+              )}
+            </SettingField>
           </div>
         </section>
 
@@ -542,26 +635,23 @@ export function Settings() {
           <div style={{ background: '#12141d', padding: '1rem', borderRadius: '8px', fontSize: '0.85rem', color: 'var(--text-secondary)', marginBottom: '1.5rem', border: '1px solid #2d3348' }}>
             <h4 style={{ margin: '0 0 0.5rem 0', color: 'var(--text-primary)', fontSize: '0.95rem' }}>Spotify Dashboard Setup</h4>
             <ol style={{ margin: 0, paddingLeft: '1.5rem', lineHeight: '1.5' }}>
-              <li style={{ marginBottom: '0.75rem' }}><strong>APIs/SDKs:</strong> Select <strong>Web API</strong>.</li>
+              <li style={{ marginBottom: '0.5rem' }}><strong>APIs/SDKs:</strong> Select <strong>Web API</strong>.</li>
+              <li style={{ marginBottom: '0.5rem' }}>
+                <strong>Website:</strong> Enter <code>https://wledashboard.com</code> or your domain (informational display metadata in Spotify portal).
+              </li>
               <li>
-                <strong>Redirect URIs:</strong> Spotify strictly requires Redirect URIs to be secure (HTTPS) unless using <code>localhost</code>. 
+                <strong>Redirect URIs (Strict):</strong> Spotify strictly requires Redirect URIs to be secure (HTTPS) unless using <code>localhost</code>. 
                 Copy and paste the exact URL below into your Spotify Developer dashboard:
                 <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.5rem', marginBottom: '0.5rem' }}>
                   <input 
                     readOnly 
-                    value={window.location.protocol === 'https:' || window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
-                      ? `${window.location.origin}/api/spotify/callback`
-                      : `http://localhost:${window.location.port || '8301'}/api/spotify/callback`
-                    }
+                    value={spotifyRedirectUri}
                     style={{ flex: 1, background: '#1a1d29', border: '1px solid #2d3348', borderRadius: '4px', padding: '0.4rem 0.6rem', color: '#a5b4fc', fontFamily: 'monospace', fontSize: '0.8rem' }}
                   />
                   <button 
                     type="button"
                     onClick={async () => {
-                      const uri = window.location.protocol === 'https:' || window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
-                        ? `${window.location.origin}/api/spotify/callback`
-                        : `http://localhost:${window.location.port || '8301'}/api/spotify/callback`
-                      const ok = await copyToClipboard(uri)
+                      const ok = await copyToClipboard(spotifyRedirectUri)
                       if (ok) {
                         setCopiedSpotifyUri(true)
                         setTimeout(() => setCopiedSpotifyUri(false), 2000)
@@ -591,6 +681,9 @@ export function Settings() {
                     <strong>Warning:</strong> You are accessing this dashboard via an insecure IP (<code>{window.location.hostname}</code>). Spotify will reject this IP. You must temporarily access the dashboard via <code>http://localhost:{window.location.port || '8301'}</code> (e.g. from the host machine or via SSH tunnel) to perform the initial Spotify connection, or set up a reverse proxy with HTTPS.
                   </div>
                 )}
+                <div style={{ marginTop: '0.5rem', fontSize: '0.8rem' }}>
+                  Behind Cloudflare Tunnel or a reverse proxy? Read our <Link to="/guides?topic=cloudflare-tunnel-reverse-proxy" style={{ color: 'var(--accent-cyan)' }}>Remote Access &amp; Reverse Proxy Guide</Link>.
+                </div>
               </li>
             </ol>
           </div>
@@ -646,7 +739,7 @@ export function Settings() {
                 </>
               ) : (
                 <a
-                  href="/api/spotify/login"
+                  href={`/api/spotify/login?redirect_uri=${encodeURIComponent(spotifyRedirectUri)}`}
                   className={styles.secondaryBtn}
                   style={{ textDecoration: 'none', display: 'inline-flex', alignItems: 'center' }}
                   onClick={(e) => {
@@ -1412,6 +1505,40 @@ export function Settings() {
             >
               Keep Current Preference ({settings.unit_system === 'imperial' ? 'Imperial' : 'Metric'})
             </button>
+          </div>
+        </div>
+      )}
+
+      {/* Interactive Demo Mode Double Confirmation Modal */}
+      {showDemoModal && (
+        <div className={styles.modalOverlay} onClick={() => setShowDemoModal(false)}>
+          <div className={styles.promptModal} onClick={e => e.stopPropagation()}>
+            <h3 className={styles.modalTitle}>Enable Interactive Demo Mode?</h3>
+            <div className={styles.demoNoticeBox}>
+              <p className={styles.demoNoticeHighlight}>Physical devices are hidden but preserved.</p>
+              <p className={styles.demoNoticeText}>
+                Simulated virtual devices and a companion 3D spatial floorplan will be loaded so you can safely explore color controls, segments, presets, and spatial mapping without affecting your physical hardware.
+              </p>
+            </div>
+            <p className={styles.modalBody}>
+              No physical controllers or settings will be modified or deleted. You can return to your live setup at any time from General Settings or the top navigation banner.
+            </p>
+            <div className={styles.demoModalActions}>
+              <button
+                type="button"
+                className={styles.promptBtnSecondary}
+                onClick={() => setShowDemoModal(false)}
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                className={styles.promptBtnPrimary}
+                onClick={handleConfirmEnableDemo}
+              >
+                Enable Demo Mode
+              </button>
+            </div>
           </div>
         </div>
       )}

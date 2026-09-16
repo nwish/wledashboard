@@ -313,27 +313,32 @@ export const GUIDES = [
       },
       {
         title: "Installing on Android (Google Chrome & Microsoft Edge)",
-        content: "Android provides automated in-app prompt installation and manual menu installation:",
+        content: "On Android, modern Chromium browsers (both Microsoft Edge and Google Chrome) utilize WLEDashboard's integrated Service Worker and Web App Manifest to mint a true native WebAPK. This installs WLEDashboard into your Android App Drawer as a standalone app with its own process, splash screen, and full-screen windowing, completely removing Edge/Chrome browser tabs and address bars:",
         steps: [
           "Open Google Chrome or Microsoft Edge on your Android smartphone or tablet.",
-          "Navigate to your WLEDashboard instance.",
+          "Navigate to your WLEDashboard instance over HTTPS (such as your Cloudflare Tunnel domain) or localhost.",
           "If prompted by the in-app mobile header bar, tap 'Install' to trigger the native installation dialog immediately.",
-          "Alternatively, tap the browser menu (three vertical dots in the top-right corner).",
-          "Select 'Install app' or 'Add to Home screen' from the menu.",
-          "Confirm the installation dialog. WLEDashboard will be added to your home screen and native Android app drawer."
+          "Alternatively, tap the browser menu (three dots in Chrome top-right, or bottom center/right toolbar in Edge).",
+          "Select 'Install app' or 'Install WLEDashboard' (or 'Add to phone') from the menu.",
+          "Confirm the installation dialog. Android will compile and install WLEDashboard directly into your home screen and native Android app drawer."
         ],
+        callout: {
+          type: "tip",
+          title: "Shortcut vs Native WebAPK Troubleshooting",
+          text: "If tapping 'Add to phone' in Edge previously created a browser shortcut that reopens inside Edge with URL bars and tabs, this happens when added before the Service Worker registers or when loaded over unencrypted HTTP. To fix: delete the existing shortcut from your home screen, navigate to your HTTPS tunnel domain, refresh once to allow the Service Worker to activate, and select 'Install WLEDashboard' from the browser menu.",
+        },
       },
       {
         title: "Local Network (HTTP) vs Secure HTTPS Domains",
-        content: "Depending on your local network architecture, browser installation policies vary slightly:",
+        content: "Browser security standards enforce different PWA capabilities depending on whether the dashboard is accessed over plain HTTP or secure HTTPS:",
         steps: [
-          "Direct Local IP over HTTP (e.g. http://192.168.1.100:8301): Apple Safari fully supports Add to Home Screen over internal HTTP without restrictions. Android Chrome allows manual installation via the three-dot browser menu.",
-          "Reverse Proxy with HTTPS (Nginx Proxy Manager, Cloudflare, Traefik): Full automated PWA installation prompts and service worker caching are active across all Android and desktop PWA browsers."
+          "Direct Local IP over HTTP (e.g. http://192.168.1.100:8301): Apple Safari supports Add to Home Screen over internal HTTP. Android browsers will allow basic bookmark shortcuts, but modern Chromium restricts automated WebAPK compilation without a secure HTTPS context.",
+          "Reverse Proxy or Cloudflare Tunnel with HTTPS: Provides the required secure context (HTTPS) enabling automatic Service Worker caching, immediate 'Install app' browser prompts, and native Android WebAPK generation."
         ],
         callout: {
           type: "note",
           title: "Zero Cloud Dependency",
-          text: "Whether installed over plain local IP or HTTPS, WLEDashboard communicates directly with your ESP microcontrollers over your local LAN. No external internet connectivity is required for daily operation.",
+          text: "Whether installed over plain local IP or an encrypted HTTPS tunnel, WLEDashboard communicates directly with your ESP microcontrollers over your local LAN. No external internet connectivity is required for daily operation.",
         },
       },
       {
@@ -649,6 +654,26 @@ export const GUIDES = [
         },
       },
       {
+        title: "Proxmox VE LXC Deployment (Automated Helper Script)",
+        content: "For Proxmox VE homelab environments, WLEDashboard provides an automated helper script to create and configure an unprivileged Debian 12 LXC container with native systemd service management and direct LAN multicast access for zero-configuration mDNS controller discovery:",
+        code: {
+          language: "bash",
+          description: "Run directly in your Proxmox VE host shell (or web shell)",
+          content: "bash -c \"$(curl -fsSL https://raw.githubusercontent.com/upioneer/WLEDashboard/master/install/proxmox/wledashboard.sh)\"",
+        },
+        steps: [
+          "Native Performance: Uses between 45MB and 90MB of RAM, running directly on the Linux host kernel without virtualization overhead.",
+          "Identical Execution: Compiles and runs the exact same Node.js 22 LTS environment, Fastify server, and Vite production bundle as the Docker container.",
+          "Native LAN Subnet: Bridges directly to vmbr0 with its own IP address, allowing seamless WLED sync and broadcast discovery across your local network.",
+          "Simple Updates: Update your container at any time by running 'pct exec <CTID> -- update-wledashboard' from the Proxmox host shell."
+        ],
+        callout: {
+          type: "tip",
+          title: "Proxmox Storage",
+          text: "The installer automatically selects your default container storage (such as local-lvm) and assigns a lean 4GB virtual disk with 1024MB RAM and 1 CPU core.",
+        },
+      },
+      {
         title: "Updating Your Container (Zero Downtime & Persistence)",
         content: "Upgrading WLEDashboard to a new release is safe, instant, and preserves all user configurations, device associations, spatial layouts, routines, and custom color palettes:",
         code: {
@@ -715,6 +740,91 @@ export const GUIDES = [
           "Cloudflare Tunnel / Zero Trust: If using Cloudflare Access or Tunnel, ensure WebSocket traffic is allowed in your Cloudflare network dashboard. Session authentication headers are preserved automatically across same-origin WebSocket handshakes.",
           "Spotify OAuth Behind HTTPS: Set your Spotify Developer Dashboard redirect URI to https://your-domain.com/api/spotify/callback. The dashboard will automatically handle token exchanges without exposing internal ports."
         ],
+      },
+    ],
+  },
+  {
+    id: "cloudflare-tunnel-reverse-proxy",
+    category: "networking",
+    title: "Remote Access: Cloudflare Tunnel, Reverse Proxies & Spotify OAuth",
+    summary: "End-to-end setup guide for hosting WLEDashboard securely behind Cloudflare Tunnels (cloudflared) or reverse proxies, including SSL encryption, WebSockets, Spotify OAuth configuration, and native PWA installation.",
+    readTime: "6 min read",
+    tags: ["cloudflare", "cloudflared", "tunnel", "reverse-proxy", "ssl", "https", "spotify", "oauth", "pwa", "webapk", "networking", "remote-access", "edge", "chrome", "android", "fastify", "trustproxy"],
+    sections: [
+      {
+        title: "Overview: Why Deploy Behind Cloudflare Tunnel?",
+        content: "Cloudflare Tunnel (cloudflared) enables secure remote access to your self-hosted WLEDashboard instance without opening incoming firewall ports or configuring router NAT port forwarding. The cloudflared lightweight daemon creates outbound-only encrypted connections directly to Cloudflare edge nodes, providing automated TLS termination, DDoS mitigation, and a custom public hostname (for example, https://wledashboard.yourdomain.com).",
+        callout: {
+          type: "note",
+          title: "LAN Hardware Protection",
+          text: "Your physical ESP32 and ESP8266 WLED controllers remain strictly isolated on your internal local network. Microcontrollers are never exposed to the public internet; WLEDashboard orchestrates them locally while acting as your secure, authenticated gateway.",
+        },
+      },
+      {
+        title: "Cloudflare Tunnel Configuration Checklist",
+        content: "When creating a Public Hostname tunnel for WLEDashboard in the Cloudflare Zero Trust dashboard (or local config.yml), apply the following settings:",
+        steps: [
+          "Public Hostname: Assign your desired subdomain and root domain (for example, wledashboard.yourdomain.com).",
+          "Service Type: Select HTTP.",
+          "Service URL: Point to your container address, such as localhost:8301 (or your host LAN IP, e.g. 192.168.1.50:8301 if cloudflared is running on a different machine).",
+          "Network WebSockets Toggle: Navigate to Network settings in your Cloudflare dashboard and verify WebSockets is toggled ON. WLEDashboard relies on WebSockets (/ws) for real-time heartbeat status, power draw, and 3D spatial updates.",
+          "SSL/TLS Encryption Mode: Set your Cloudflare SSL mode to Full or Flexible to prevent HTTP redirect loops."
+        ],
+      },
+      {
+        title: "Spotify Developer App: Website vs Redirect URIs",
+        content: "When connecting Spotify to WLEDashboard for real-time album artwork color extraction, the Spotify Developer Dashboard requires two separate web address fields. Understanding the distinction is essential:",
+        steps: [
+          "Website Field (Informational Only): Enter the official project website (https://wledashboard.com) or your personal root domain. Spotify uses this field purely as display metadata in your developer portal. It does not affect authorization, token exchanges, or callback redirects.",
+          "Redirect URIs Field (Strict & Required): Enter the exact public URL of your personal WLEDashboard instance followed by /api/spotify/callback (for example, https://wledashboard.yourdomain.com/api/spotify/callback).",
+          "Protocol Strictness: Spotify strictly mandates HTTPS for all redirect URIs unless the hostname is localhost. Your Cloudflare Tunnel domain satisfies this requirement.",
+          "Exact Match Requirement: Spotify validates the redirect URI character for character against the callback request. If the configured URI in Spotify does not match your active browser address, Spotify rejects authorization with the error: redirect_uri: Not matching configuration."
+        ],
+        callout: {
+          type: "tip",
+          title: "Copy with One Click",
+          text: "WLEDashboard automatically calculates your active external origin and generates the exact callback string in Settings under Spotify Integration. Click the Copy button next to the Redirect URI field to copy it directly into your Spotify app settings.",
+        },
+      },
+      {
+        title: "Transparent Reverse Proxy Handling in WLEDashboard",
+        content: "To support reverse proxies, Cloudflare Tunnels, and container bridge networks seamlessly, WLEDashboard incorporates several architectural safeguards:",
+        steps: [
+          "Fastify Proxy Trust: The backend server is configured with trustProxy enabled, allowing Fastify to respect X-Forwarded-Proto, X-Forwarded-Host, and X-Forwarded-For headers passed by cloudflared and Nginx.",
+          "State-Preserved Redirects: When initiating Spotify authorization, the dashboard stores the origin domain inside Spotify's cryptographically secure state parameter. When Spotify redirects back, the backend extracts the exact matching URI to complete the token exchange without host header spoofing issues.",
+          "WebSocket Auto-Negotiation: The frontend client detects window.location.protocol. When loaded over HTTPS, it automatically negotiates secure WebSocket connections (wss://) to your tunnel domain."
+        ],
+      },
+      {
+        title: "Progressive Web App (PWA) & WebAPK Native Installation",
+        content: "Hosting behind HTTPS unlocks complete Progressive Web App capabilities on mobile and desktop browsers:",
+        steps: [
+          "Native Standalone WebAPK: On Android devices using Microsoft Edge or Google Chrome, WLEDashboard installs as a native WebAPK in your Android App Drawer rather than a simple browser shortcut.",
+          "Window Isolation: The installed app runs in standalone mode without browser URL bars, navigation buttons, or tab bars, providing a native application experience.",
+          "Service Worker Caching: The service worker precaches application shell assets while enforcing strict network bypass for all /api and /ws endpoints, guaranteeing that real-time hardware commands are never stale.",
+          "Troubleshooting Shortcuts: If an existing home screen shortcut opens with Edge browser chrome, delete the shortcut from your phone. Open https://wledashboard.yourdomain.com in Edge, refresh once to ensure the service worker registers, then select 'Install WLEDashboard' from the browser menu or in-app modal."
+        ],
+      },
+      {
+        title: "Traditional Reverse Proxies (Nginx, Caddy, Traefik)",
+        content: "If you operate a self-hosted reverse proxy instead of Cloudflare Tunnels, ensure your virtual host forwards standard proxy and WebSocket upgrade headers:",
+        code: {
+          language: "nginx",
+          description: "Sample Nginx reverse proxy configuration snippet",
+          content: [
+            "location / {",
+            "    proxy_pass http://127.0.0.1:8301;",
+            "    proxy_http_version 1.1;",
+            "    proxy_set_header Upgrade $http_upgrade;",
+            "    proxy_set_header Connection \"upgrade\";",
+            "    proxy_set_header Host $host;",
+            "    proxy_set_header X-Real-IP $remote_addr;",
+            "    proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;",
+            "    proxy_set_header X-Forwarded-Proto $scheme;",
+            "    proxy_set_header X-Forwarded-Host $host;",
+            "}"
+          ].join("\n"),
+        },
       },
     ],
   },

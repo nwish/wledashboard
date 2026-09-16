@@ -1220,3 +1220,59 @@
   padding-top: var(--sp-2);
   border-top: 1px solid var(--border-subtle);
 }
+
+/* ── Demo Mode ───────────────────────────────────────────────── */
+.demoActiveBadge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background-color: var(--accent-violet-10);
+  border: 1px solid hsl(262, 70%, 60%, 0.4);
+  color: var(--accent-violet);
+  padding: 4px 10px;
+  border-radius: var(--radius-full);
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.demoActiveDot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background-color: var(--accent-violet);
+  box-shadow: 0 0 6px var(--accent-violet);
+}
+
+.demoNoticeBox {
+  background-color: var(--accent-violet-10);
+  border: 1px solid hsl(262, 70%, 60%, 0.35);
+  border-radius: var(--radius-m);
+  padding: var(--sp-3) var(--sp-4);
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.demoNoticeHighlight {
+  font-size: 0.88rem;
+  font-weight: 600;
+  color: var(--accent-violet);
+  margin: 0;
+}
+
+.demoNoticeText {
+  font-size: 0.82rem;
+  color: var(--text-secondary);
+  line-height: 1.45;
+  margin: 0;
+}
+
+.demoModalActions {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--sp-3);
+  margin-top: var(--sp-2);
+}
+

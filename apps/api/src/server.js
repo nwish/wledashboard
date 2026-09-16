@@ -48,6 +48,7 @@ const IS_PROD = process.env.NODE_ENV === 'production'
 // ─── Server Setup ─────────────────────────────────────────────────────────────
 
 const fastify = Fastify({
+  trustProxy: true,
   logger: IS_PROD
     ? true
     : {
@@ -77,28 +78,26 @@ await fastify.register(multipart, {
   }
 })
 
-// ─── Static Frontend (production only) ───────────────────────────────────────
+// ─── Static Frontend ─────────────────────────────────────────────────────────
 
-if (IS_PROD) {
-  const possiblePaths = [
-    join(__dirname, '../../web/dist'),
-    join(__dirname, '../../../apps/web/dist'),
-    join(__dirname, '../../../web/dist'),
-    join(process.cwd(), 'apps/web/dist'),
-  ]
-  const distPath = possiblePaths.find((p) => existsSync(p))
-  if (distPath) {
-    await fastify.register(staticFiles, {
-      root: distPath,
-      prefix: '/',
-    })
-    // SPA fallback: return index.html for all non-API routes
-    fastify.setNotFoundHandler((_req, reply) => {
-      reply.sendFile('index.html')
-    })
-  } else {
-    fastify.log.warn('Static web frontend directory not found. Running in API-only mode.')
-  }
+const possiblePaths = [
+  join(__dirname, '../../web/dist'),
+  join(__dirname, '../../../apps/web/dist'),
+  join(__dirname, '../../../web/dist'),
+  join(process.cwd(), 'apps/web/dist'),
+]
+const distPath = possiblePaths.find((p) => existsSync(p))
+if (distPath) {
+  await fastify.register(staticFiles, {
+    root: distPath,
+    prefix: '/',
+  })
+  // SPA fallback: return index.html for all non-API routes
+  fastify.setNotFoundHandler((_req, reply) => {
+    reply.sendFile('index.html')
+  })
+} else {
+  fastify.log.warn('Static web frontend directory not found. Running in API-only mode.')
 }
 
 // ─── Health Check ─────────────────────────────────────────────────────────────

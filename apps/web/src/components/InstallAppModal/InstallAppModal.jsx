@@ -93,22 +93,22 @@ export function InstallAppModal({
                     disabled={installing}
                   >
                     <DownloadIcon />
-                    {installing ? 'Installing...' : 'Install to Home Screen'}
+                    {installing ? 'Installing...' : 'Install App'}
                   </button>
                 </div>
               ) : (
                 <ol className={styles.stepsList}>
                   <li className={styles.stepItem}>
                     <span className={styles.stepNum}>1</span>
-                    <span>Tap the <strong>three dots menu</strong> (top right in Chrome)</span>
+                    <span>Tap the <strong>browser menu</strong> (top-right in Chrome, bottom bar in Edge)</span>
                   </li>
                   <li className={styles.stepItem}>
                     <span className={styles.stepNum}>2</span>
-                    <span>Select <strong>Install app</strong> or <strong>Add to Home screen</strong></span>
+                    <span>Select <strong>Install app</strong>, <strong>Install WLEDashboard</strong>, or <strong>Add to phone</strong></span>
                   </li>
                   <li className={styles.stepItem}>
                     <span className={styles.stepNum}>3</span>
-                    <span>Confirm installation in the system dialog</span>
+                    <span>Confirm installation. Android will install WLEDashboard directly into your App Drawer as a native standalone app</span>
                   </li>
                 </ol>
               )}

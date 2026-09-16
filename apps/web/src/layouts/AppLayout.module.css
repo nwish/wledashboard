@@ -18,3 +18,58 @@
   transition: background 800ms var(--ease-out-expo);
   flex-shrink: 0;
 }
+
+/* ── Demo Mode Banner ────────────────────────────────────────── */
+
+.demoBanner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sp-4);
+  background: linear-gradient(90deg, rgba(34, 211, 238, 0.12), rgba(168, 85, 247, 0.12));
+  border-bottom: 1px solid rgba(34, 211, 238, 0.3);
+  padding: 0.5rem 1.5rem;
+  z-index: 50;
+  flex-wrap: wrap;
+}
+
+.demoBannerContent {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3);
+  flex-wrap: wrap;
+}
+
+.demoBadge {
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  padding: 0.15rem 0.5rem;
+  border-radius: var(--radius-s);
+  background-color: var(--accent-cyan, #22d3ee);
+  color: #000;
+  text-transform: uppercase;
+}
+
+.demoBannerText {
+  font-size: 0.85rem;
+  color: var(--text-primary);
+  font-weight: 500;
+}
+
+.exitDemoBtn {
+  background-color: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  color: var(--text-primary);
+  font-size: 0.8rem;
+  font-weight: 600;
+  padding: 0.3rem 0.8rem;
+  border-radius: var(--radius-s);
+  cursor: pointer;
+  transition: background-color 0.15s, border-color 0.15s;
+}
+
+.exitDemoBtn:hover {
+  background-color: rgba(255, 255, 255, 0.2);
+  border-color: rgba(255, 255, 255, 0.4);
+}

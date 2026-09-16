@@ -1,10 +1,14 @@
 import { v4 as uuidv4 } from 'uuid'
 import { getDb } from '../db/database.js'
 import { sendDeviceCommand, listDevices } from './deviceService.js'
+import { isDemoMode, getDemoGroups } from './demoData.js'
 
 // ─── Group CRUD ──────────────────────────────────────────────────────────────
 
 export function listGroups() {
+  if (isDemoMode()) {
+    return getDemoGroups()
+  }
   const db = getDb()
   const groups = db.prepare(`
     SELECT id, name, type, color, sort_order, spotify_sync_enabled, weather_sync_enabled, created_at
@@ -23,6 +27,9 @@ export function listGroups() {
 }
 
 export function getGroup(id) {
+  if (isDemoMode() || id?.startsWith('demo-')) {
+    return getDemoGroups().find(g => g.id === id) || null
+  }
   const db = getDb()
   const group = db.prepare('SELECT * FROM groups WHERE id = ?').get(id)
   if (!group) return null

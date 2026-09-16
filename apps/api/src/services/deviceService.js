@@ -1,6 +1,15 @@
 import { v4 as uuid } from 'uuid'
 import { getDb } from '../db/database.js'
 import { logEvent } from './loggerService.js'
+import {
+  isDemoMode,
+  getDemoDevices,
+  getDemoDevice,
+  getDemoCachedState,
+  getAllDemoCachedStates,
+  applyDemoDeviceCommand,
+  updateDemoDevice,
+} from './demoData.js'
 
 // ─── Internal State ───────────────────────────────────────────────────────────
 
@@ -27,16 +36,25 @@ function notify(deviceId, state) {
 }
 
 export function getCachedState(deviceId) {
+  if (isDemoMode() || deviceId?.startsWith('demo-')) {
+    return getDemoCachedState(deviceId)
+  }
   return stateCache.get(deviceId) ?? null
 }
 
 export function getAllCachedStates() {
+  if (isDemoMode()) {
+    return getAllDemoCachedStates()
+  }
   return Object.fromEntries(stateCache)
 }
 
 // ─── Device CRUD ──────────────────────────────────────────────────────────────
 
 export function listDevices() {
+  if (isDemoMode()) {
+    return getDemoDevices()
+  }
   const db = getDb()
   return db.prepare(`
     SELECT * FROM devices ORDER BY sort_order ASC, created_at ASC
@@ -44,6 +62,9 @@ export function listDevices() {
 }
 
 export function getDevice(id) {
+  if (isDemoMode() || id?.startsWith('demo-')) {
+    return getDemoDevice(id)
+  }
   return getDb().prepare('SELECT * FROM devices WHERE id = ?').get(id) ?? null
 }
 
@@ -62,6 +83,10 @@ export function createDevice({ name, ip_address, mac_address, firmware_ver, led_
 }
 
 export function updateDevice(id, fields) {
+  if (isDemoMode() || id.startsWith('demo-')) {
+    return updateDemoDevice(id, fields)
+  }
+
   const db = getDb()
   const allowed = ['name', 'ip_address', 'sort_order', 'led_density', 'led_count', 'firmware_ver', 'spotify_sync_enabled', 'weather_sync_enabled']
   const sets = Object.keys(fields)
@@ -110,11 +135,18 @@ export async function fetchDeviceState(device) {
 }
 
 export async function sendDeviceCommand(device, payload) {
+  const deviceId = typeof device === 'string' ? device : device?.id
+  if (isDemoMode() || deviceId?.startsWith('demo-')) {
+    const updated = applyDemoDeviceCommand(deviceId, payload)
+    notify(deviceId, updated)
+    return { ok: true, data: updated }
+  }
+
   // 1. Immediately update backend stateCache and notify WebSocket subscribers
-  const cached = stateCache.get(device.id) || { on: true, bri: 255 }
+  const cached = stateCache.get(deviceId) || { on: true, bri: 255 }
   const merged = { ...cached, ...payload, _ts: Date.now() }
-  stateCache.set(device.id, merged)
-  notify(device.id, merged)
+  stateCache.set(deviceId, merged)
+  notify(deviceId, merged)
 
   // 2. Also forward command over direct WLED WebSocket if connected
   try {
@@ -152,7 +184,7 @@ import { connectWledWebSocket, sendWledWebSocketCommand, disconnectWledWebSocket
 // ─── Polling & Live Streaming Engine ──────────────────────────────────────────
 
 export function startPolling(device) {
-  if (pollTimers.has(device.id)) return
+  if (!device || device.id?.startsWith('demo-') || pollTimers.has(device.id)) return
 
   const db = getDb()
   let enriched = false  // tracks initial enrichment sync

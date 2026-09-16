@@ -11,6 +11,7 @@ import {
   getAllCachedStates,
 } from '../services/deviceService.js'
 import { logEvent } from '../services/loggerService.js'
+import { isDemoMode, simulateDemoFirmwareUpdate } from '../services/demoData.js'
 
 // ─── Validation Schemas ───────────────────────────────────────────────────────
 
@@ -114,6 +115,16 @@ export async function deviceRoutes(fastify) {
   fastify.post('/devices/:id/firmware', async (req, reply) => {
     const device = getDevice(req.params.id)
     if (!device) return reply.code(404).send({ error: 'Device not found' })
+
+    if (isDemoMode() || req.params.id.startsWith('demo-')) {
+      if (device.is_online === 0) {
+        return reply.code(503).send({ error: `Cannot update firmware: "${device.name}" is offline.` })
+      }
+      const targetVersion = req.query?.version || '0.15.0'
+      simulateDemoFirmwareUpdate(device.id, targetVersion)
+      logEvent('info', 'firmware', `[Demo Mode] Simulated firmware update to "${device.name}" (v${targetVersion})`)
+      return { ok: true, message: `[Demo Mode] Firmware update simulated successfully. ${device.name} upgraded to v${targetVersion}.` }
+    }
 
     const data = await req.file()
     if (!data) return reply.code(400).send({ error: 'No file uploaded' })

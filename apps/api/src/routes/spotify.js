@@ -3,10 +3,22 @@ import { getSpotifyAuthUrl, handleSpotifyCallback, disconnectSpotify, getSpotify
 
 export async function spotifyRoutes(fastify) {
   fastify.get('/spotify/login', async (req, reply) => {
-    const protocol = req.headers['x-forwarded-proto'] || req.protocol || 'http'
-    const host = req.headers['x-forwarded-host'] || req.headers.host
-    const origin = `${protocol}://${host}`
-    const authUrl = getSpotifyAuthUrl(origin)
+    let redirectUri = req.query.redirect_uri
+
+    if (!redirectUri && req.headers.referer) {
+      try {
+        const refUrl = new URL(req.headers.referer)
+        redirectUri = `${refUrl.origin}/api/spotify/callback`
+      } catch {}
+    }
+
+    if (!redirectUri) {
+      const protocol = req.headers['x-forwarded-proto'] || req.protocol || 'http'
+      const host = req.headers['x-forwarded-host'] || req.headers.host
+      redirectUri = `${protocol}://${host}/api/spotify/callback`
+    }
+
+    const authUrl = getSpotifyAuthUrl(redirectUri, redirectUri)
     if (!authUrl) {
       reply.code(500).send({ error: 'Spotify Client ID/Secret not configured. Please save them in Settings.' })
       return
@@ -15,7 +27,7 @@ export async function spotifyRoutes(fastify) {
   })
 
   fastify.get('/spotify/callback', async (req, reply) => {
-    const { code, error } = req.query
+    const { code, error, state } = req.query
     if (error) {
       reply.code(400).send({ error: 'Spotify authorization failed' })
       return
@@ -27,14 +39,17 @@ export async function spotifyRoutes(fastify) {
     }
 
     try {
-      const protocol = req.headers['x-forwarded-proto'] || req.protocol || 'http'
-      const host = req.headers['x-forwarded-host'] || req.headers.host
-      const origin = `${protocol}://${host}`
+      let redirectUri = state
+      if (!redirectUri) {
+        const protocol = req.headers['x-forwarded-proto'] || req.protocol || 'http'
+        const host = req.headers['x-forwarded-host'] || req.headers.host
+        redirectUri = `${protocol}://${host}/api/spotify/callback`
+      }
       
-      await handleSpotifyCallback(code, origin)
-      // Redirect back to frontend dashboard
-      const frontendRedirect = process.env.FRONTEND_ORIGIN || (process.env.NODE_ENV === 'production' ? '/' : 'http://localhost:5173')
-      reply.redirect(frontendRedirect)
+      await handleSpotifyCallback(code, redirectUri)
+      // Redirect back to frontend settings or dashboard
+      const baseRedirect = process.env.FRONTEND_ORIGIN || (process.env.NODE_ENV === 'production' ? '' : 'http://localhost:5173')
+      reply.redirect(`${baseRedirect}/settings`)
     } catch (err) {
       req.log.error('Spotify callback error:', err)
       reply.code(500).send({ error: 'Failed to exchange authorization code' })

@@ -36,10 +36,13 @@ export function DeviceCard({ device, isManualSort, dragAttributes, dragListeners
   const uploadFirmware = useDeviceStore(s => s.uploadFirmware)
   const latestFirmwareVersion = useDeviceStore(s => s.latestFirmwareVersion)
   const addToast     = useUIStore(s => s.addToast)
+  const isDemoModeStore = useUIStore(s => s.demoMode)
+  const isDemoMode   = isDemoModeStore || device.id?.startsWith('demo-')
 
   const [contextMenu, setContextMenu] = useState(null)  // { x, y }
   const [renaming, setRenaming]       = useState(false)
   const [isUpdatingFirmware, setIsUpdatingFirmware] = useState(false)
+  const [showSimulateFirmwareModal, setShowSimulateFirmwareModal] = useState(false)
   const [renameVal, setRenameVal]     = useState(device.name)
   const renameRef = useRef(null)
 
@@ -380,9 +383,47 @@ export function DeviceCard({ device, isManualSort, dragAttributes, dragListeners
     }
   }
 
+  const handleConfirmSimulatedUpdate = useCallback(async () => {
+    setShowSimulateFirmwareModal(false)
+    setIsUpdatingFirmware(true)
+    const targetVer = latestFirmwareVersion || '0.15.0'
+    addToast({
+      message: `[Demo Mode] Simulating OTA firmware flash for "${device.name}" to v${targetVer}...`,
+      type: 'info',
+      duration: 4000,
+    })
+
+    setTimeout(async () => {
+      try {
+        await updateDevice(device.id, { firmware_ver: targetVer })
+        await useDeviceStore.getState().fetchDevices()
+        addToast({
+          message: `[Demo Mode] "${device.name}" firmware updated to v${targetVer} (Simulated). Device rebooted.`,
+          type: 'success',
+          duration: 6000,
+        })
+      } catch (err) {
+        addToast({
+          message: `Simulated update failed: ${err.message}`,
+          type: 'error',
+        })
+      } finally {
+        setIsUpdatingFirmware(false)
+      }
+    }, 2500)
+  }, [device.id, device.name, latestFirmwareVersion, updateDevice, addToast])
+
   const handleUpdateFirmware = useCallback(() => {
+    if (!isOnline) {
+      addToast({ message: `Cannot update firmware: "${device.name}" is offline.`, type: 'error' })
+      return
+    }
+    if (isDemoMode) {
+      setShowSimulateFirmwareModal(true)
+      return
+    }
     fileInputRef.current?.click()
-  }, [])
+  }, [isOnline, isDemoMode, device.name, addToast])
 
   const isFavorite = useUIStore(s => s.favorites.includes(device.id))
   const toggleFavorite = useUIStore(s => s.toggleFavorite)
@@ -425,6 +466,7 @@ export function DeviceCard({ device, isManualSort, dragAttributes, dragListeners
       label: isFirmwareOutdated ? 'Update Firmware (New!)' : 'Update Firmware',
       icon: <UpdateIcon />,
       onClick: handleUpdateFirmware,
+      disabled: !isOnline,
     },
     { separator: true },
     {
@@ -501,7 +543,12 @@ export function DeviceCard({ device, isManualSort, dragAttributes, dragListeners
             {(device.firmware_ver || device.liveState?.info?.ver) && (
               <span
                 className={[styles.version, isFirmwareOutdated && styles.versionOutdated].filter(Boolean).join(' ')}
-                title={isFirmwareOutdated ? `Update available (latest: v${latestFirmwareVersion})` : `Firmware v${device.firmware_ver || device.liveState?.info?.ver}`}
+                title={isFirmwareOutdated ? `Update available (latest: v${latestFirmwareVersion}) - Click to update` : `Firmware v${device.firmware_ver || device.liveState?.info?.ver}`}
+                onClick={isFirmwareOutdated ? (e) => { e.stopPropagation(); handleUpdateFirmware(); } : undefined}
+                style={isFirmwareOutdated ? { cursor: 'pointer' } : undefined}
+                role={isFirmwareOutdated ? 'button' : undefined}
+                tabIndex={isFirmwareOutdated ? 0 : undefined}
+                onKeyDown={isFirmwareOutdated ? (e) => { if (e.key === 'Enter' || e.key === ' ') { e.stopPropagation(); handleUpdateFirmware(); } } : undefined}
               >
                 v{String(device.firmware_ver || device.liveState?.info?.ver).replace(/^v/i, '')}
                 {isFirmwareOutdated && <WarningTriangleIcon />}
@@ -750,6 +797,46 @@ export function DeviceCard({ device, isManualSort, dragAttributes, dragListeners
               )}
               <button type="submit" className={styles.chipSaveBtn}>Save</button>
             </form>
+          </div>
+        </div>,
+        document.body
+      )}
+
+      {/* Simulated Firmware Update Modal (Demo Mode) */}
+      {showSimulateFirmwareModal && createPortal(
+        <div className={styles.chipModalOverlay} onClick={() => setShowSimulateFirmwareModal(false)}>
+          <div className={styles.chipModal} onClick={e => e.stopPropagation()} style={{ maxWidth: '440px', padding: '1.5rem' }}>
+            <h4 style={{ margin: '0 0 0.75rem 0', color: 'var(--text-primary)', fontSize: '1.1rem' }}>Simulate Firmware Update</h4>
+            <div style={{ background: 'rgba(34, 211, 238, 0.08)', border: '1px solid rgba(34, 211, 238, 0.25)', borderRadius: '8px', padding: '0.75rem 1rem', marginBottom: '1rem' }}>
+              <div style={{ color: 'var(--accent-cyan)', fontWeight: 600, fontSize: '0.9rem', marginBottom: '0.25rem' }}>
+                Interactive Demo Simulation
+              </div>
+              <div style={{ color: 'var(--text-secondary)', fontSize: '0.85rem', lineHeight: '1.4' }}>
+                Simulate flashing upstream WLED <strong>v{latestFirmwareVersion || '0.15.0'}</strong> to <strong>{device.name}</strong>. Virtual controller state will be updated in memory without affecting physical hardware.
+              </div>
+            </div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem', color: 'var(--text-secondary)', marginBottom: '1.25rem' }}>
+              <span>Current: <strong style={{ color: 'var(--text-primary)' }}>v{String(device.firmware_ver || device.liveState?.info?.ver || '0.14.0').replace(/^v/i, '')}</strong></span>
+              <span>Target: <strong style={{ color: 'var(--color-success, #10b981)' }}>v{String(latestFirmwareVersion || '0.15.0').replace(/^v/i, '')}</strong></span>
+            </div>
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.75rem' }}>
+              <button
+                type="button"
+                className={styles.chipSaveBtn}
+                style={{ background: 'var(--surface-3, #2d3348)', color: 'var(--text-primary)' }}
+                onClick={() => setShowSimulateFirmwareModal(false)}
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                className={styles.chipSaveBtn}
+                style={{ background: 'linear-gradient(135deg, #06b6d4, #3b82f6)', color: '#fff', fontWeight: 600 }}
+                onClick={handleConfirmSimulatedUpdate}
+              >
+                Simulate Update
+              </button>
+            </div>
           </div>
         </div>,
         document.body

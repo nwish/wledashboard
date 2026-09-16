@@ -46,27 +46,33 @@ function deleteSetting(key) {
   db.prepare('DELETE FROM settings WHERE key = ?').run(key)
 }
 
-export function getSpotifyAuthUrl(origin) {
+export function getSpotifyAuthUrl(originOrRedirectUri, state) {
   const clientId = process.env.SPOTIFY_CLIENT_ID || getSetting('spotify_client_id')
   if (!clientId) return null
 
-  const redirectUri = origin + '/api/spotify/callback'
+  const redirectUri = originOrRedirectUri.includes('/api/spotify/callback')
+    ? originOrRedirectUri
+    : originOrRedirectUri.replace(/\/+$/, '') + '/api/spotify/callback'
+
   const scopes = 'user-read-currently-playing'
   
   const params = new URLSearchParams({
     client_id: clientId,
     response_type: 'code',
     redirect_uri: redirectUri,
-    scope: scopes
+    scope: scopes,
+    ...(state ? { state } : {})
   })
 
   return `https://accounts.spotify.com/authorize?${params.toString()}`
 }
 
-export async function handleSpotifyCallback(code, origin) {
+export async function handleSpotifyCallback(code, originOrRedirectUri) {
   const clientId = process.env.SPOTIFY_CLIENT_ID || getSetting('spotify_client_id')
   const clientSecret = process.env.SPOTIFY_CLIENT_SECRET || getSetting('spotify_client_secret')
-  const redirectUri = origin + '/api/spotify/callback'
+  const redirectUri = originOrRedirectUri.includes('/api/spotify/callback')
+    ? originOrRedirectUri
+    : originOrRedirectUri.replace(/\/+$/, '') + '/api/spotify/callback'
 
   const res = await fetch('https://accounts.spotify.com/api/token', {
     method: 'POST',
