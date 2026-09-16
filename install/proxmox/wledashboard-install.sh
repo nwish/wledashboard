@@ -47,7 +47,7 @@ success "Base packages installed."
 # 2. Install Node.js 22 LTS (NodeSource)
 info "Setting up Node.js 22 LTS repository..."
 mkdir -p /etc/apt/keyrings
-curl -fsSL https://deb.nodesource.com/gpgkey/nodesource-repo.gpg.key | gpg --dearmor -o /etc/apt/keyrings/nodesource.gpg
+curl -fsSL https://deb.nodesource.com/gpgkey/nodesource-repo.gpg.key | gpg --dearmor --yes -o /etc/apt/keyrings/nodesource.gpg
 echo "deb [signed-by=/etc/apt/keyrings/nodesource.gpg] https://deb.nodesource.com/node_22.x nodistro main" > /etc/apt/sources.list.d/nodesource.list
 
 apt-get update -y
@@ -81,7 +81,8 @@ success "Web frontend compiled to ${APP_DIR}/apps/web/dist."
 
 # 5. Create systemd service
 info "Configuring systemd service..."
-cat << 'EOF' > /etc/systemd/system/wledashboard.service
+NODE_BIN=$(command -v node || echo "/usr/bin/node")
+cat << EOF > /etc/systemd/system/wledashboard.service
 [Unit]
 Description=WLEDashboard Controller Service
 After=network.target
@@ -93,7 +94,7 @@ WorkingDirectory=/opt/wledashboard
 Environment=NODE_ENV=production
 Environment=PORT=8301
 Environment=DATA_DIR=/opt/wledashboard/data
-ExecStart=/usr/bin/node /opt/wledashboard/apps/api/src/server.js
+ExecStart=${NODE_BIN} /opt/wledashboard/apps/api/src/server.js
 Restart=always
 RestartSec=5
 LimitNOFILE=65536
