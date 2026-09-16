@@ -347,9 +347,15 @@ else
 fi
 
 # Run in-container setup script
-info "Executing WLEDashboard setup script inside container..."
+info "Downloading and transferring setup script to container..."
 INSTALL_URL="https://raw.githubusercontent.com/upioneer/WLEDashboard/master/install/proxmox/wledashboard-install.sh"
-pct exec "$CTID" -- bash -c "curl -fsSL '$INSTALL_URL' | bash"
+curl -fsSL "$INSTALL_URL" -o /tmp/wledashboard-install.sh
+pct push "$CTID" /tmp/wledashboard-install.sh /tmp/wledashboard-install.sh
+rm -f /tmp/wledashboard-install.sh
+
+info "Executing WLEDashboard setup script inside container..."
+pct exec "$CTID" -- bash /tmp/wledashboard-install.sh
+pct exec "$CTID" -- rm -f /tmp/wledashboard-install.sh
 
 echo ""
 echo -e "${GN}======================================================${CL}"
