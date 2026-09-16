@@ -105,24 +105,17 @@ WLEDashboard provides pre-built container images published to the GitHub Contain
 Create a `docker-compose.yml` file (or use the one included in the repository root):
 
 ```yaml
-version: '3.8'
-
 services:
   wledashboard:
     image: ghcr.io/upioneer/wledashboard:latest
     container_name: wledashboard
-    # Standard Bridge Mode: Port defaults to 8301 to eliminate collisions with Z-Wave JS UI, Grafana, and Uptime Kuma (3000/3001)
+    restart: unless-stopped
     ports:
-      - "${PORT:-8301}:${PORT:-8301}"
-    # Optional: Linux Host Mode (Enables native mDNS discovery on Linux bare metal/VM hosts; comment out "ports:" if enabled)
-    # network_mode: host
-    environment:
-      - NODE_ENV=production
-      - PORT=${PORT:-8301}
-      - DATA_DIR=/app/data
+      - "8301:8301"
     volumes:
       - wledashboard_data:/app/data
-    restart: unless-stopped
+    environment:
+      - NODE_ENV=production
 
 volumes:
   wledashboard_data:

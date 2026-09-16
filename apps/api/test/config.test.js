@@ -20,7 +20,7 @@ test('Config Backup & Restore API', async (t) => {
     assert.equal(res.statusCode, 200)
     const body = JSON.parse(res.body)
 
-    assert.equal(body.schema_version, '0.22.0')
+    assert.equal(body.schema_version, '0.22.1')
     assert.ok(body.exported_at)
     assert.ok(body.row_counts)
     assert.ok(body.data)

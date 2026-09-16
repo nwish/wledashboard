@@ -1,4 +1,6 @@
-const RUN_IDS = [35044736603, 35044736623, 35044744478];
+const RUN_IDS = process.argv.slice(2).map(Number).filter(Boolean).length > 0
+  ? process.argv.slice(2).map(Number).filter(Boolean)
+  : [35105372713, 35105362635, 35105362634];
 const REPO = 'upioneer/WLEDashboard';
 
 async function sleep(ms) {

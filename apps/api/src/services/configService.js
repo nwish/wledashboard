@@ -1,7 +1,7 @@
 import { getDb } from '../db/database.js'
 
 // Current schema version identifier -- update this when new tables or columns are added.
-const BACKUP_SCHEMA_VERSION = '0.22.0'
+const BACKUP_SCHEMA_VERSION = '0.22.1'
 
 /**
  * Export full system configuration as JSON object.

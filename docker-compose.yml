@@ -1,32 +1,43 @@
-version: '3.8'
-
 services:
   wledashboard:
     image: ghcr.io/upioneer/wledashboard:latest
     container_name: wledashboard
-    # Standard Bridge Mode (Universal across Linux, macOS, Windows):
-    # Port defaults to 8301 to eliminate collisions with Z-Wave JS UI, Grafana, and Uptime Kuma (3000/3001).
-    # To preserve existing bookmarks on port 3001, map host 3001 to container 8301:
-    #   - "3001:8301"
+    restart: unless-stopped
     ports:
-      - "${PORT:-8301}:${PORT:-8301}"
-
-    # Optional: Linux Host Mode (Enables native mDNS/Bonjour auto-discovery on Linux bare-metal/VM hosts).
-    # Note: If enabling host mode, comment out the "ports:" section above.
-    # network_mode: host
-
-    # Automatic Container Updates (Watchtower compatible: https://containrrr.dev/watchtower/):
-    # Uncomment the labels below to opt in to automated background container updates via Watchtower:
-    # labels:
-    #   - "com.centurylinklabs.watchtower.enable=true"
-
-    environment:
-      - NODE_ENV=production
-      - PORT=${PORT:-8301}
-      - DATA_DIR=/app/data
+      - "8301:8301"
     volumes:
       - wledashboard_data:/app/data
-    restart: unless-stopped
+    environment:
+      - NODE_ENV=production
 
 volumes:
   wledashboard_data:
+
+# ==============================================================================
+# OPTIONAL ADVANCED CONFIGURATIONS (For power users)
+# ==============================================================================
+#
+# 1. PRESERVE OLD PORT 3001 BOOKMARKS:
+#    If upgrading from pre-v0.21.0 and you want to keep your existing browser
+#    bookmarks or dashboard links on port 3001, change ports above to:
+#      ports:
+#        - "3001:8301"
+#
+# 2. AUTOMATIC UPDATES (WATCHTOWER):
+#    If you use Watchtower (https://containrrr.dev/watchtower/) to automatically
+#    update containers, add this label under the wledashboard service:
+#      labels:
+#        - "com.centurylinklabs.watchtower.enable=true"
+#
+# 3. LINUX HOST NETWORKING (NATIVE mDNS DISCOVERY):
+#    On bare-metal Linux or Proxmox LXC hosts, if you want native mDNS multicast
+#    discovery without entering IP addresses, replace the 'ports:' section with:
+#      network_mode: host
+#    (Note: Do not use host mode on Docker Desktop for macOS or Windows)
+#
+# 4. CUSTOM HOST STORAGE DIRECTORY (BIND MOUNT):
+#    To store database files in a specific folder on your host machine instead
+#    of a Docker named volume, change the volume line to:
+#      volumes:
+#        - /path/to/my/folder:/app/data
+# ==============================================================================
