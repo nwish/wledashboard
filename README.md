@@ -153,6 +153,17 @@ Access the application in your browser at `http://localhost:8301`.
 * Persistence: All configuration, groups, and device states persist in the `wledashboard_data` volume mounted to `/app/data`.
 * Local Discovery: Standard bridge port mapping routes web traffic on port 8301 (preventing collisions with Z-Wave JS UI, Grafana, or Uptime Kuma). On Linux bare metal hosts or LXC containers where mDNS broadcast discovery across subnets is required, `network_mode: host` can optionally be configured.
 
+### Updating WLEDashboard (Zero Downtime)
+
+To update to the latest release without losing any configuration or database records:
+
+```bash
+docker compose pull && docker compose up -d
+```
+
+* Preserving Bookmarks: If upgrading from versions prior to v0.21.0 and you wish to keep browser bookmarks on port 3001, map `3001:8301` under the ports section in your `docker-compose.yml`.
+* Automated Updates with Watchtower (Opt-In): The included `docker-compose.yml` provides a commented `com.centurylinklabs.watchtower.enable=true` label. Uncomment this label if you run Watchtower and wish to automate background container updates.
+
 ---
 
 ## Roadmap

@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
-import { settingsApi, mqttApi, spotifyApi, weatherApi } from '../../lib/api.js'
+import { settingsApi, mqttApi, spotifyApi, weatherApi, configApi } from '../../lib/api.js'
 import { useUIStore } from '../../stores/uiStore.js'
 import { LocationMapPicker } from '../../components/LocationMapPicker/LocationMapPicker.jsx'
 import { useUpdateCheck } from '../../hooks/useUpdateCheck.js'
@@ -58,6 +58,7 @@ export function Settings() {
   const [spotifyConnected, setSpotifyConnected] = useState(false)
   const [copiedSpotifyUri, setCopiedSpotifyUri] = useState(false)
   const [copiedApiToken, setCopiedApiToken]     = useState(false)
+  const [copiedUpdateCmd, setCopiedUpdateCmd]   = useState(false)
   const [showApiToken, setShowApiToken]         = useState(false)
   const [weatherData, setWeatherData] = useState(null)
   const [weatherSyncing, setWeatherSyncing] = useState(false)
@@ -65,6 +66,14 @@ export function Settings() {
   const [showMappingEditor, setShowMappingEditor] = useState(false)
   const [customMappings, setCustomMappings] = useState(null)
   const { updateAvailable } = useUpdateCheck(__APP_VERSION__)
+
+  // ── Backup & Restore state ───────────────────────────────────────────────────
+  const [backupExporting, setBackupExporting]   = useState(false)
+  const [restoreState, setRestoreState]         = useState('idle') // 'idle' | 'previewing' | 'importing'
+  const [restorePreview, setRestorePreview]     = useState(null)   // parsed backup envelope before commit
+  const [restoreMode, setRestoreMode]           = useState('merge') // 'merge' | 'replace'
+  const [showReplaceConfirm, setShowReplaceConfirm] = useState(false)
+  const fileInputRef = useRef(null)
 
   const debounceTimers = useRef({})
   const saveStatusTimer = useRef(null)
@@ -212,6 +221,88 @@ export function Settings() {
     }
   }, [performSave, addToast])
 
+  const handleCopyUpdateCmd = useCallback(async () => {
+    const cmd = 'docker compose pull && docker compose up -d'
+    const ok = await copyToClipboard(cmd)
+    if (ok) {
+      setCopiedUpdateCmd(true)
+      setTimeout(() => setCopiedUpdateCmd(false), 2000)
+      addToast({ message: 'Update command copied to clipboard', type: 'success' })
+    } else {
+      addToast({ message: 'Failed to copy update command', type: 'error' })
+    }
+  }, [addToast])
+
+  // ── Backup Export ────────────────────────────────────────────────────────────
+  const handleBackupExport = useCallback(async () => {
+    setBackupExporting(true)
+    try {
+      const config = await configApi.export()
+      const blob = new Blob([JSON.stringify(config, null, 2)], { type: 'application/json' })
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      const ts = new Date().toISOString().slice(0, 10)
+      a.href = url
+      a.download = `wledashboard-backup-v${__APP_VERSION__}-${ts}.json`
+      a.click()
+      URL.revokeObjectURL(url)
+      addToast({ message: 'Backup downloaded successfully', type: 'success' })
+    } catch (err) {
+      addToast({ message: `Backup failed: ${err.message}`, type: 'error' })
+    } finally {
+      setBackupExporting(false)
+    }
+  }, [addToast])
+
+  // ── Restore: File Selection & Preview ────────────────────────────────────────
+  const handleRestoreFileSelect = useCallback((e) => {
+    const file = e.target.files?.[0]
+    if (!fileInputRef.current) return
+    fileInputRef.current.value = ''
+    if (!file) return
+
+    const reader = new FileReader()
+    reader.onload = (ev) => {
+      try {
+        const parsed = JSON.parse(ev.target.result)
+        if (!parsed?.data || typeof parsed.data !== 'object') {
+          addToast({ message: 'Invalid backup file: missing data envelope', type: 'error' })
+          return
+        }
+        setRestorePreview(parsed)
+        setRestoreState('previewing')
+      } catch {
+        addToast({ message: 'Invalid backup file: could not parse JSON', type: 'error' })
+      }
+    }
+    reader.readAsText(file)
+  }, [addToast])
+
+  const handleRestoreDismiss = useCallback(() => {
+    setRestorePreview(null)
+    setRestoreState('idle')
+    setShowReplaceConfirm(false)
+  }, [])
+
+  // ── Restore: Commit ──────────────────────────────────────────────────────────
+  const handleRestoreCommit = useCallback(async () => {
+    if (!restorePreview?.data) return
+    setRestoreState('importing')
+    try {
+      const result = await configApi.import(restorePreview.data, restoreMode)
+      addToast({
+        message: `Restore complete. Devices: ${result.stats.devices}, Routines: ${result.stats.routines}, Rooms: ${result.stats.rooms}`,
+        type: 'success',
+      })
+      setRestorePreview(null)
+      setRestoreState('idle')
+      setShowReplaceConfirm(false)
+    } catch (err) {
+      addToast({ message: `Restore failed: ${err.message}`, type: 'error' })
+      setRestoreState('previewing')
+    }
+  }, [restorePreview, restoreMode, addToast])
+
   if (loading) {
     return (
       <main className={styles.page}>
@@ -265,11 +356,45 @@ export function Settings() {
         <div className={styles.updateBanner}>
           <div className={styles.updateBannerText}>
             <h3>Update Available: v{updateAvailable}</h3>
-            <p>A new version of WLEDashboard is available! Since you are running via Docker, you can update instantly without losing any data.</p>
+            <p>A new version of WLEDashboard is available! You can update your Docker container seamlessly without losing any data or configuration.</p>
           </div>
           <div className={styles.updateInstructions}>
-            <p>Run the following command in your terminal:</p>
-            <code>docker compose pull && docker compose up -d</code>
+            <p className={styles.updateInstructionsHeader}>Run the following command in your terminal:</p>
+            <div className={styles.updateCodeRow}>
+              <code className={styles.updateCodeBlock}>docker compose pull &amp;&amp; docker compose up -d</code>
+              <button
+                type="button"
+                className={[styles.copyUpdateBtn, copiedUpdateCmd && styles.copyUpdateBtnCopied].filter(Boolean).join(' ')}
+                onClick={handleCopyUpdateCmd}
+                title="Copy update command to clipboard"
+                aria-label="Copy update command to clipboard"
+              >
+                {copiedUpdateCmd ? (
+                  <>
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                      <polyline points="20 6 9 17 4 12" />
+                    </svg>
+                    <span>Copied</span>
+                  </>
+                ) : (
+                  <>
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                      <rect x="9" y="9" width="13" height="13" rx="2" ry="2" />
+                      <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
+                    </svg>
+                    <span>Copy Command</span>
+                  </>
+                )}
+              </button>
+            </div>
+            <div className={styles.updateTipsRow}>
+              <span className={styles.updateTip}>
+                <strong>Port 3001 Bookmarks:</strong> If upgrading from versions prior to v0.21.0, map <code>3001:8301</code> under ports in your docker-compose.yml to preserve bookmarks.
+              </span>
+              <span className={styles.updateTip}>
+                <strong>Watchtower:</strong> Automated background updates can be enabled by uncommenting the <code>com.centurylinklabs.watchtower.enable=true</code> label in your docker-compose.yml.
+              </span>
+            </div>
           </div>
         </div>
       )}
@@ -1020,6 +1145,196 @@ export function Settings() {
               </label>
             </SettingField>
           </div>
+        </section>
+
+        {/* About */}
+        {/* Backup & Restore */}
+        <section className={styles.section} aria-labelledby="backup-heading">
+          <div className={styles.sectionHeader}>
+            <h2 id="backup-heading" className={styles.sectionTitle}>Backup & Restore</h2>
+            <p className={styles.sectionSubtitle}>
+              Export a complete snapshot of all devices, groups, automations, 3D spatial layouts, routines, palettes, and studio timelines. Import a previous backup to restore or migrate your configuration.
+            </p>
+          </div>
+
+          {/* Export Row */}
+          <div className={styles.backupRow}>
+            <div className={styles.backupRowMeta}>
+              <span className={styles.backupRowLabel}>Export Backup</span>
+              <span className={styles.backupRowHint}>Downloads a timestamped JSON file containing all 17 database tables. Safe to run at any time and does not affect live data.</span>
+            </div>
+            <button
+              type="button"
+              className={styles.backupBtn}
+              onClick={handleBackupExport}
+              disabled={backupExporting}
+              aria-label="Download full backup as JSON file"
+            >
+              {backupExporting ? (
+                <>
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" className={styles.backupSpinner}>
+                    <path d="M21 12a9 9 0 1 1-6.219-8.56" />
+                  </svg>
+                  Exporting...
+                </>
+              ) : (
+                <>
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                    <polyline points="7 10 12 15 17 10" />
+                    <line x1="12" y1="15" x2="12" y2="3" />
+                  </svg>
+                  Download Backup
+                </>
+              )}
+            </button>
+          </div>
+
+          {/* Import Row */}
+          <div className={styles.backupRow}>
+            <div className={styles.backupRowMeta}>
+              <span className={styles.backupRowLabel}>Restore from Backup</span>
+              <span className={styles.backupRowHint}>Select a previously exported JSON backup file. You will be shown a preview of the backup version and record counts before any data is written.</span>
+            </div>
+            <button
+              type="button"
+              className={styles.backupBtn}
+              onClick={() => fileInputRef.current?.click()}
+              disabled={restoreState !== 'idle'}
+              aria-label="Select backup file to restore"
+            >
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                <polyline points="17 8 12 3 7 8" />
+                <line x1="12" y1="3" x2="12" y2="15" />
+              </svg>
+              Select Backup File
+            </button>
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept=".json,application/json"
+              style={{ display: 'none' }}
+              onChange={handleRestoreFileSelect}
+              aria-hidden="true"
+            />
+          </div>
+
+          {/* Restore Preview Panel */}
+          {restorePreview && restoreState === 'previewing' && (() => {
+            const backupVer = restorePreview.schema_version || restorePreview.version || 'unknown'
+            const currentVer = __APP_VERSION__
+            const isOlderBackup = backupVer !== currentVer
+            const counts = restorePreview.row_counts || {}
+            return (
+              <div className={styles.restorePreviewPanel}>
+                <div className={styles.restorePreviewHeader}>
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                    <circle cx="12" cy="12" r="10" />
+                    <line x1="12" y1="8" x2="12" y2="12" />
+                    <line x1="12" y1="16" x2="12.01" y2="16" />
+                  </svg>
+                  <span>Backup Preview</span>
+                </div>
+
+                <div className={styles.restoreVersionRow}>
+                  <span className={styles.restoreVersionItem}>
+                    <strong>Backup version:</strong> v{backupVer}
+                  </span>
+                  <span className={styles.restoreVersionItem}>
+                    <strong>Current version:</strong> v{currentVer}
+                  </span>
+                  {isOlderBackup && (
+                    <span className={styles.restoreVersionWarning}>
+                      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                        <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" />
+                        <line x1="12" y1="9" x2="12" y2="13" />
+                        <line x1="12" y1="17" x2="12.01" y2="17" />
+                      </svg>
+                      This backup is from v{backupVer} and you are running v{currentVer}. Features added since that version will not be in this backup and will remain empty after restore.
+                    </span>
+                  )}
+                </div>
+
+                {Object.keys(counts).length > 0 && (
+                  <div className={styles.restoreCountGrid}>
+                    {Object.entries(counts).map(([table, count]) => (
+                      <div key={table} className={styles.restoreCountItem}>
+                        <span className={styles.restoreCountValue}>{count}</span>
+                        <span className={styles.restoreCountLabel}>{table.replace(/_/g, ' ')}</span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                <div className={styles.restoreModeRow}>
+                  <span className={styles.restoreModeLabel}>Restore mode:</span>
+                  <div className={styles.restoreModeOptions}>
+                    <label className={styles.restoreModeOption}>
+                      <input
+                        type="radio"
+                        name="restoreMode"
+                        value="merge"
+                        checked={restoreMode === 'merge'}
+                        onChange={() => setRestoreMode('merge')}
+                      />
+                      <div>
+                        <strong>Merge</strong>
+                        <p>Add or update records from the backup without deleting existing data.</p>
+                      </div>
+                    </label>
+                    <label className={styles.restoreModeOption}>
+                      <input
+                        type="radio"
+                        name="restoreMode"
+                        value="replace"
+                        checked={restoreMode === 'replace'}
+                        onChange={() => { setRestoreMode('replace'); setShowReplaceConfirm(false) }}
+                      />
+                      <div>
+                        <strong>Replace</strong>
+                        <p>Clear all existing data first, then import the backup. This cannot be undone.</p>
+                      </div>
+                    </label>
+                  </div>
+                </div>
+
+                {restoreMode === 'replace' && !showReplaceConfirm && (
+                  <div className={styles.restoreReplaceWarning}>
+                    <strong>Replace mode will permanently erase all current devices, groups, automations, spatial layouts, and studio content before restoring.</strong> Click Confirm Replace below to acknowledge this is intentional.
+                  </div>
+                )}
+
+                <div className={styles.restoreActions}>
+                  <button
+                    type="button"
+                    className={styles.backupBtnSecondary}
+                    onClick={handleRestoreDismiss}
+                  >
+                    Cancel
+                  </button>
+                  {restoreMode === 'replace' && !showReplaceConfirm ? (
+                    <button
+                      type="button"
+                      className={styles.backupBtnDanger}
+                      onClick={() => setShowReplaceConfirm(true)}
+                    >
+                      Confirm Replace
+                    </button>
+                  ) : (
+                    <button
+                      type="button"
+                      className={restoreMode === 'replace' ? styles.backupBtnDanger : styles.backupBtn}
+                      onClick={handleRestoreCommit}
+                      disabled={restoreState === 'importing'}
+                    >
+                      {restoreState === 'importing' ? 'Restoring...' : (restoreMode === 'replace' ? 'Replace & Restore' : 'Merge & Restore')}
+                    </button>
+                  )}
+                </div>
+              </div>
+            )
+          })()}
         </section>
 
         {/* About */}

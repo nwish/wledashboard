@@ -126,12 +126,34 @@
 * [x] Dynamic Weather Sync (OpenWeatherMap API, Live Status Widget, Condition Simulator, and Automation Triggers)
 * [ ] Pixel Art & Preset Community Hub
 
+## PLANNED: PHASE 13 (Autonomous Container Upgrades & Ephemeral Swapper Protocol)
+
+* [ ] Native Node.js Docker Engine API client communicating via Unix domain socket (`/var/run/docker.sock`)
+* [ ] Ephemeral Swapper Protocol service (`apps/api/src/services/dockerSwapperService.js`) to decouple updater execution from retiring container
+* [ ] Capability detection endpoint (`GET /api/system/upgrade-capabilities`) supporting 3 operational tiers (Socket, Volume Trigger File, Manual Guided Fallback)
+* [ ] Strict volume preservation enforcement (`v=false`) on container deletion to guarantee persistent SQLite databases are never purged
+* [ ] Settings view 1 click in app update button with confirmation modal and live reconnection health check
+* [ ] Semi autonomous host trigger file watcher (`/app/data/.update_trigger`) for restricted container environments without socket mounts
+
+## COMPLETED: PHASE 14 (Full Global Backup & Restore)
+
+* [x] Expand `configService.js` (`exportConfig` / `importConfig`) to cover all 17 SQLite tables (`devices`, `groups`, `group_members`, `group_children`, `settings`, `presets`, `schedules`, `routines`, `routine_steps`, `dwellings`, `floors`, `rooms`, `anchors`, `animations`, `palettes`, `matrices`, `matrix_drawings`)
+* [x] Bump export schema version identifier to match current app release (`0.22.0`)
+* [x] Settings view Backup & Restore section with 1 click JSON download trigger (`GET /api/config/export`) and file picker upload trigger (`POST /api/config/import`) with merge vs replace mode toggle
+* [x] Import validation: schema version compatibility check ("Backup is vX.Y.Z and you are currently on vA.B.C"), pre import row count preview grid, and post import success confirmation toast
+
+## PLANNED: PHASE 15 (Selective and Granular Backup Restore)
+
+* [ ] Granular module opt in checkboxes in the restore preview modal allowing users to selectively deploy specific subsets of backup data (such as devices only, devices and groups, spatial layouts only, routines and automations, or studio palettes)
+* [ ] Dependency graph validator ensuring parent references (such as groups referencing devices, or anchors referencing rooms and devices) remain coherent during partial restore operations
+* [ ] Selective Merge and Replace execution modes scoped down to user selected data categories without touching unselected tables
+
 ## FUTURE BACKLOG (Rainy Day)
 
 * [ ] Consider user preference toggle in Settings / Spatial View to swap mouse button actions (Left Click Pan vs Right Click Rotate)
 * [ ] PixelForge support and integration for 2D matrix art and animated GIF assets
 * [ ] Robust WLED strip segment control mastered on the dashboard
 * [ ] Segment control in the 3D spatial visualizer with declared bend angles at specified pixel counts
-* [ ] Proxmox VE Helper Script for 1-click LXC automated container deployment
-* [ ] GhostPoly-inspired procedural blueprint to 3D room spatial mesh extrusion
+* [ ] Proxmox VE Helper Script for 1 click LXC automated container deployment
+* [ ] GhostPoly inspired procedural blueprint to 3D room spatial mesh extrusion
 

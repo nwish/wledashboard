@@ -610,7 +610,7 @@ export const GUIDES = [
     title: "Network Architecture, Docker & mDNS Discovery",
     summary: "Best practices for containerized deployment, local network discovery, and persistent SQLite storage.",
     readTime: "5 min read",
-    tags: ["docker", "compose", "mdns", "networking", "sqlite", "lan", "http", "clipboard"],
+    tags: ["docker", "compose", "mdns", "networking", "sqlite", "lan", "http", "clipboard", "update", "watchtower", "upgrade", "backup", "restore", "export", "import", "migrate"],
     sections: [
       {
         title: "Zero-Configuration Local Discovery & Security Safeguards",
@@ -639,12 +639,19 @@ export const GUIDES = [
             "    container_name: wledashboard",
             "    # Standard Bridge Mode (Universal across Linux, macOS, Windows):",
             "    # Port defaults to 8301 to eliminate collisions with Z-Wave JS UI, Grafana, and Uptime Kuma (3000/3001).",
+            "    # To preserve existing bookmarks on port 3001, map host 3001 to container 8301:",
+            "    #   - \"3001:8301\"",
             "    ports:",
             "      - \"${PORT:-8301}:${PORT:-8301}\"",
             "",
             "    # Optional: Linux Host Mode (Enables native mDNS/Bonjour auto-discovery on Linux bare-metal/VM hosts).",
             "    # Note: If enabling host mode, comment out the \"ports:\" section above.",
             "    # network_mode: host",
+            "",
+            "    # Automatic Container Updates (Watchtower compatible: https://containrrr.dev/watchtower/):",
+            "    # Uncomment the labels below to opt in to automated background container updates via Watchtower:",
+            "    # labels:",
+            "    #   - \"com.centurylinklabs.watchtower.enable=true\"",
             "",
             "    environment:",
             "      - NODE_ENV=production",
@@ -657,6 +664,50 @@ export const GUIDES = [
             "volumes:",
             "  wledashboard_data:"
           ].join("\n"),
+        },
+      },
+      {
+        title: "Updating Your Container (Zero Downtime & Persistence)",
+        content: "Upgrading WLEDashboard to a new release is safe, instant, and preserves all user configurations, device associations, spatial layouts, routines, and custom color palettes:",
+        code: {
+          language: "bash",
+          description: "Pull the latest container image and recreate the service",
+          content: [
+            "# 1. Pull the latest multi-architecture image from GitHub Container Registry",
+            "docker compose pull",
+            "",
+            "# 2. Recreate and restart the container in background mode with zero configuration loss",
+            "docker compose up -d",
+            "",
+            "# Optional: Verify running status and health check",
+            "docker compose ps"
+          ].join("\n"),
+        },
+        steps: [
+          "Data Volume Persistence: All application data and SQLite databases reside in the wledashboard_data Docker volume mounted to /app/data. Tearing down or upgrading the container never deletes your data.",
+          "Bookmark Preservation on Port 3001: If you previously deployed WLEDashboard before v0.21.0 and have browser bookmarks or home dashboard links pointing to port 3001, you can keep them intact by updating your compose file ports section to '3001:8301'.",
+          "Automated Background Updates with Watchtower (Opt-In): If you use Watchtower to manage container updates automatically across your homelab, uncomment the labels section in docker-compose.yml containing com.centurylinklabs.watchtower.enable=true.",
+          "In-App Update Indicator: The Settings page in WLEDashboard automatically queries GitHub Releases for updates. When a newer version is released, an update banner displays with a one-click Copy Command button."
+        ],
+        callout: {
+          type: "tip",
+          title: "Safe Upgrades",
+          text: "Never use 'docker compose down -v' when updating. The -v flag deletes named volumes and will erase your SQLite database. Always use 'docker compose pull && docker compose up -d' for seamless, safe upgrades.",
+        },
+      },
+      {
+        title: "Backup & Restore: Full Configuration Snapshot",
+        content: "WLEDashboard supports a full JSON backup and restore covering all 17 database tables: devices, groups, group memberships, presets, schedules, routines, routine steps, spatial dwellings, floors, rooms, anchors, animations, palettes, matrices, matrix drawings, and settings. Backups are performed from Settings > Backup & Restore.",
+        steps: [
+          "Export: Click Download Backup in Settings. A timestamped JSON file (e.g. wledashboard-backup-v0.21.0-2026-09-16.json) downloads to your browser. No server restart required. Safe to run at any time.",
+          "Migrate Between Hosts: Copy the backup file to the new host, launch the container, and use Restore from Backup to load the file. All devices, spatial layouts, automations, and palettes transfer instantly.",
+          "Merge Mode (Default): Adds or updates records from the backup file without touching data that is not in the backup. Useful for importing partial configurations or merging setups.",
+          "Replace Mode: Clears all existing user tables first, then imports the backup in full. Use this for a clean restore. A two-click confirmation is required to prevent accidental data loss.",
+        ],
+        callout: {
+          type: "warning",
+          title: "Restoring a Backup from an Older Version",
+          text: "When you restore a backup file from an older version of WLEDashboard onto a newer instance, the restore preview panel will display a version mismatch warning: 'This backup is from v0.14.0 and you are running v0.21.0. Features added since that version will not be in this backup and will remain empty after restore.' This is expected and safe. All tables introduced in the newer version will simply remain empty rather than being overwritten. Your existing data for those newer features is preserved in Merge mode. In Replace mode, newer-version tables are cleared then left empty since the older backup has no rows for them.",
         },
       },
       {
