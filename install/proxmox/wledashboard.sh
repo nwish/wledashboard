@@ -34,18 +34,33 @@ if ! command -v pveversion >/dev/null 2>&1; then
   exit 1
 fi
 
+# Ensure terminal input is available when executed via curl pipe
+if [ ! -t 0 ] && [ -c /dev/tty ]; then
+  exec < /dev/tty
+fi
+
+# Determine if whiptail interactive dialogs can be rendered
+USE_WHIPTAIL=false
+if command -v whiptail >/dev/null 2>&1 && [ -t 0 ] && [ -t 1 ]; then
+  USE_WHIPTAIL=true
+fi
+
 echo -e "${BL}======================================================${CL}"
 echo -e "${BL}          WLEDashboard Proxmox VE Installer           ${CL}"
 echo -e "${BL}======================================================${CL}"
 
-# Determine next available Container ID
-CTID=$(pvesh get /cluster/nextid)
+# Determine initial defaults
+NEXT_CTID=$(pvesh get /cluster/nextid)
+CTID="$NEXT_CTID"
 HOSTNAME="wledashboard"
 CORES="1"
 RAM="1024"
 SWAP="512"
 DISK_SIZE="4G"
 BRIDGE="vmbr0"
+VLAN=""
+IP_INPUT="dhcp"
+GATEWAY=""
 
 # Find default storage for containers
 STORAGE=$(pvesm status -content rootdir | awk 'NR>1 {print $1; exit}')
@@ -59,6 +74,171 @@ if [ -z "$TMPL_STORAGE" ]; then
   TMPL_STORAGE="local"
 fi
 
+# 1. Initial Prompt: Proceed?
+if [ "$USE_WHIPTAIL" = true ]; then
+  whiptail --backtitle "Proxmox VE Helper Scripts" --title "WLEDashboard LXC" \
+    --yesno "This will create a New WLEDashboard LXC Container.\n\nProceed?" 10 58 || {
+    info "Installation cancelled by user."
+    exit 0
+  }
+else
+  read -r -p "This will create a New WLEDashboard LXC Container. Proceed? [Y/n] " PROCEED
+  PROCEED=${PROCEED:-Y}
+  if [[ ! "$PROCEED" =~ ^[Yy]$ ]]; then
+    info "Installation cancelled by user."
+    exit 0
+  fi
+fi
+
+# 2. Select Settings Mode: Default vs Advanced
+MODE="default"
+if [ "$USE_WHIPTAIL" = true ]; then
+  if whiptail --backtitle "Proxmox VE Helper Scripts" --title "SETTINGS TYPE" \
+    --yes-button "Default" --no-button "Advanced" \
+    --yesno "Select configuration mode:\n\nDefault: ID ${CTID}, 1 Core, 1024MB RAM, 4GB Disk, Hostname '${HOSTNAME}'\nAdvanced: Customize Container ID, Hostname, CPU, RAM, Disk, Storage, Network" 13 70; then
+    MODE="default"
+  else
+    MODE="advanced"
+  fi
+else
+  read -r -p "Use Default Settings? (ID: $CTID, Name: $HOSTNAME, 1 Core, 1GB RAM, 4GB Disk) [Y/n] " MODE_PROMPT
+  MODE_PROMPT=${MODE_PROMPT:-Y}
+  if [[ ! "$MODE_PROMPT" =~ ^[Yy]$ ]]; then
+    MODE="advanced"
+  fi
+fi
+
+# 3. Interactive Prompts if Advanced Mode Selected
+if [ "$MODE" = "advanced" ]; then
+  if [ "$USE_WHIPTAIL" = true ]; then
+    # Container ID
+    while true; do
+      CTID=$(whiptail --backtitle "Proxmox VE Helper Scripts" --title "CONTAINER ID" \
+        --inputbox "Set Container ID:" 8 58 "$CTID" 3>&1 1>&2 2>&3) || { info "Installation cancelled."; exit 0; }
+      if [[ ! "$CTID" =~ ^[0-9]+$ ]]; then
+        whiptail --backtitle "Proxmox VE Helper Scripts" --title "ERROR" --msgbox "Container ID must be numeric." 8 58
+      elif pct status "$CTID" >/dev/null 2>&1 || qm status "$CTID" >/dev/null 2>&1; then
+        whiptail --backtitle "Proxmox VE Helper Scripts" --title "ERROR" --msgbox "ID $CTID is already in use by another CT or VM. Please choose a different ID." 8 58
+      else
+        break
+      fi
+    done
+
+    # Hostname
+    HOSTNAME=$(whiptail --backtitle "Proxmox VE Helper Scripts" --title "HOSTNAME" \
+      --inputbox "Set Container Hostname:" 8 58 "$HOSTNAME" 3>&1 1>&2 2>&3) || { info "Installation cancelled."; exit 0; }
+    HOSTNAME=${HOSTNAME:-wledashboard}
+
+    # CPU Cores
+    CORES=$(whiptail --backtitle "Proxmox VE Helper Scripts" --title "CPU CORES" \
+      --inputbox "Allocate CPU Cores:" 8 58 "$CORES" 3>&1 1>&2 2>&3) || { info "Installation cancelled."; exit 0; }
+    CORES=${CORES:-1}
+
+    # RAM
+    RAM=$(whiptail --backtitle "Proxmox VE Helper Scripts" --title "RAM ALLOCATION (MB)" \
+      --inputbox "Allocate RAM in Megabytes:" 8 58 "$RAM" 3>&1 1>&2 2>&3) || { info "Installation cancelled."; exit 0; }
+    RAM=${RAM:-1024}
+
+    # Swap
+    SWAP=$(whiptail --backtitle "Proxmox VE Helper Scripts" --title "SWAP ALLOCATION (MB)" \
+      --inputbox "Allocate Swap in Megabytes:" 8 58 "$SWAP" 3>&1 1>&2 2>&3) || { info "Installation cancelled."; exit 0; }
+    SWAP=${SWAP:-512}
+
+    # Disk Size
+    DISK_SIZE=$(whiptail --backtitle "Proxmox VE Helper Scripts" --title "DISK SIZE" \
+      --inputbox "Set Disk Size (e.g. 4G, 8G):" 8 58 "$DISK_SIZE" 3>&1 1>&2 2>&3) || { info "Installation cancelled."; exit 0; }
+    DISK_SIZE=${DISK_SIZE:-4G}
+
+    # Storage Pool
+    STORAGE=$(whiptail --backtitle "Proxmox VE Helper Scripts" --title "ROOT STORAGE" \
+      --inputbox "Set Root Disk Storage Pool:" 8 58 "$STORAGE" 3>&1 1>&2 2>&3) || { info "Installation cancelled."; exit 0; }
+
+    # Bridge
+    BRIDGE=$(whiptail --backtitle "Proxmox VE Helper Scripts" --title "NETWORK BRIDGE" \
+      --inputbox "Set Network Bridge:" 8 58 "$BRIDGE" 3>&1 1>&2 2>&3) || { info "Installation cancelled."; exit 0; }
+    BRIDGE=${BRIDGE:-vmbr0}
+
+    # VLAN Tag
+    VLAN=$(whiptail --backtitle "Proxmox VE Helper Scripts" --title "VLAN TAG" \
+      --inputbox "Set VLAN Tag (leave empty for untagged):" 8 58 "$VLAN" 3>&1 1>&2 2>&3) || { info "Installation cancelled."; exit 0; }
+
+    # IP Address
+    IP_INPUT=$(whiptail --backtitle "Proxmox VE Helper Scripts" --title "IP ADDRESS" \
+      --inputbox "Set IP Address ('dhcp' or CIDR static, e.g. 192.168.1.50/24):" 8 58 "$IP_INPUT" 3>&1 1>&2 2>&3) || { info "Installation cancelled."; exit 0; }
+    IP_INPUT=${IP_INPUT:-dhcp}
+
+    if [ "$IP_INPUT" != "dhcp" ]; then
+      GATEWAY=$(whiptail --backtitle "Proxmox VE Helper Scripts" --title "GATEWAY IP" \
+        --inputbox "Set Gateway IP Address:" 8 58 "192.168.1.1" 3>&1 1>&2 2>&3) || { info "Installation cancelled."; exit 0; }
+    fi
+  else
+    # Terminal text fallback prompts
+    while true; do
+      read -r -p "Container ID [$CTID]: " INPUT_CTID
+      CTID=${INPUT_CTID:-$CTID}
+      if [[ ! "$CTID" =~ ^[0-9]+$ ]]; then
+        error "Container ID must be numeric."
+      elif pct status "$CTID" >/dev/null 2>&1 || qm status "$CTID" >/dev/null 2>&1; then
+        error "ID $CTID is already in use by another CT or VM. Please choose a different ID."
+      else
+        break
+      fi
+    done
+
+    read -r -p "Hostname [$HOSTNAME]: " INPUT_HOSTNAME
+    HOSTNAME=${INPUT_HOSTNAME:-$HOSTNAME}
+
+    read -r -p "CPU Cores [$CORES]: " INPUT_CORES
+    CORES=${INPUT_CORES:-$CORES}
+
+    read -r -p "RAM (MB) [$RAM]: " INPUT_RAM
+    RAM=${INPUT_RAM:-$RAM}
+
+    read -r -p "Swap (MB) [$SWAP]: " INPUT_SWAP
+    SWAP=${INPUT_SWAP:-$SWAP}
+
+    read -r -p "Disk Size [$DISK_SIZE]: " INPUT_DISK
+    DISK_SIZE=${INPUT_DISK:-$DISK_SIZE}
+
+    read -r -p "Storage Pool [$STORAGE]: " INPUT_STORAGE
+    STORAGE=${INPUT_STORAGE:-$STORAGE}
+
+    read -r -p "Network Bridge [$BRIDGE]: " INPUT_BRIDGE
+    BRIDGE=${INPUT_BRIDGE:-$BRIDGE}
+
+    read -r -p "VLAN Tag (empty for none) [$VLAN]: " INPUT_VLAN
+    VLAN=${INPUT_VLAN:-$VLAN}
+
+    read -r -p "IP Address ('dhcp' or CIDR) [$IP_INPUT]: " INPUT_IP
+    IP_INPUT=${INPUT_IP:-$IP_INPUT}
+
+    if [ "$IP_INPUT" != "dhcp" ]; then
+      read -r -p "Gateway IP: " INPUT_GW
+      GATEWAY=${INPUT_GW:-$GATEWAY}
+    fi
+  fi
+fi
+
+# Build network configuration string
+NET0="name=eth0,bridge=${BRIDGE}"
+NET_DESC="${BRIDGE}"
+if [ -n "${VLAN:-}" ]; then
+  NET0="${NET0},tag=${VLAN}"
+  NET_DESC="${NET_DESC} (VLAN ${VLAN})"
+fi
+
+if [ "$IP_INPUT" = "dhcp" ]; then
+  NET0="${NET0},ip=dhcp"
+  NET_DESC="DHCP on ${NET_DESC}"
+else
+  NET0="${NET0},ip=${IP_INPUT}"
+  if [ -n "${GATEWAY:-}" ]; then
+    NET0="${NET0},gw=${GATEWAY}"
+  fi
+  NET_DESC="${IP_INPUT} on ${NET_DESC}"
+fi
+NET0="${NET0},type=veth"
+
 info "Container Configuration:"
 echo -e "  Container ID:  ${GN}${CTID}${CL}"
 echo -e "  Hostname:      ${GN}${HOSTNAME}${CL}"
@@ -67,13 +247,23 @@ echo -e "  RAM:           ${GN}${RAM} MB${CL}"
 echo -e "  Swap:          ${GN}${SWAP} MB${CL}"
 echo -e "  Disk Size:     ${GN}${DISK_SIZE}${CL}"
 echo -e "  Root Storage:  ${GN}${STORAGE}${CL}"
-echo -e "  Network:       ${GN}DHCP on ${BRIDGE}${CL}"
+echo -e "  Network:       ${GN}${NET_DESC}${CL}"
 
-read -r -p "Proceed with container creation? [Y/n] " CONFIRM
-CONFIRM=${CONFIRM:-Y}
-if [[ ! "$CONFIRM" =~ ^[Yy]$ ]]; then
-  info "Installation aborted by user."
-  exit 0
+if [ "$MODE" = "advanced" ]; then
+  if [ "$USE_WHIPTAIL" = true ]; then
+    whiptail --backtitle "Proxmox VE Helper Scripts" --title "CONFIRM CREATION" \
+      --yesno "Ready to create container with the selected configuration?\n\nContainer ID: $CTID\nHostname: $HOSTNAME\nCores: $CORES | RAM: ${RAM}MB | Disk: $DISK_SIZE\nStorage: $STORAGE\nNetwork: $NET_DESC" 14 62 || {
+      info "Installation cancelled by user."
+      exit 0
+    }
+  else
+    read -r -p "Proceed with container creation? [Y/n] " CONFIRM
+    CONFIRM=${CONFIRM:-Y}
+    if [[ ! "$CONFIRM" =~ ^[Yy]$ ]]; then
+      info "Installation cancelled by user."
+      exit 0
+    fi
+  fi
 fi
 
 # Update appliance template cache
@@ -104,7 +294,7 @@ pct create "$CTID" "$TMPL_PATH" \
   --memory "$RAM" \
   --swap "$SWAP" \
   --rootfs "${STORAGE}:${DISK_SIZE}" \
-  --net0 "name=eth0,bridge=${BRIDGE},ip=dhcp,type=veth" \
+  --net0 "$NET0" \
   --unprivileged 1 \
   --features nesting=1 \
   --onboot 1 \
@@ -114,22 +304,27 @@ pct create "$CTID" "$TMPL_PATH" \
 info "Starting LXC container $CTID..."
 pct start "$CTID"
 
-# Wait for network initialization inside container
-info "Waiting for container network to acquire IP..."
-for i in {1..30}; do
-  if pct exec "$CTID" -- ip -4 addr show eth0 2>/dev/null | grep -q 'inet '; then
-    break
+# Network resolution
+if [ "$IP_INPUT" = "dhcp" ]; then
+  info "Waiting for container network to acquire IP via DHCP..."
+  for i in {1..30}; do
+    if pct exec "$CTID" -- ip -4 addr show eth0 2>/dev/null | grep -q 'inet '; then
+      break
+    fi
+    sleep 1
+  done
+
+  IP=$(pct exec "$CTID" -- ip -4 addr show eth0 2>/dev/null | awk '/inet / {print $2}' | cut -d/ -f1 | head -n1)
+
+  if [ -z "$IP" ]; then
+    warn "Container started but DHCP lease was not immediately detected. Check router DHCP lease."
+    IP="<CONTAINER_IP>"
+  else
+    success "Container acquired IP: $IP"
   fi
-  sleep 1
-done
-
-IP=$(pct exec "$CTID" -- ip -4 addr show eth0 | awk '/inet / {print $2}' | cut -d/ -f1 | head -n1)
-
-if [ -z "$IP" ]; then
-  warn "Container started but IP address was not immediately detected. Check router DHCP lease."
-  IP="<CONTAINER_IP>"
 else
-  success "Container acquired IP: $IP"
+  IP=$(echo "$IP_INPUT" | cut -d/ -f1)
+  success "Container configured with static IP: $IP"
 fi
 
 # Run in-container setup script
