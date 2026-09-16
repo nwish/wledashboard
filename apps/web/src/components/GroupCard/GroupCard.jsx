@@ -194,19 +194,25 @@ export function GroupCard({ group, onEdit }) {
             <span className={styles.activeBadge}>{activeDevices.length} Active</span>
           )}
           <button
+            disabled={!isOnline}
             style={{
               marginLeft: 'auto',
-              background: group.spotify_sync_enabled ? 'var(--color-success, #10b981)' : 'transparent',
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '4px',
+              background: group.spotify_sync_enabled ? 'var(--accent-emerald)' : 'transparent',
               color: group.spotify_sync_enabled ? '#000' : 'var(--text-secondary)',
               border: group.spotify_sync_enabled ? 'none' : '1px solid var(--border-subtle)',
               borderRadius: '12px',
               padding: '2px 10px',
               fontSize: '0.75rem',
               fontWeight: 600,
-              cursor: 'pointer',
+              cursor: isOnline ? 'pointer' : 'not-allowed',
+              opacity: isOnline ? 1 : 0.45,
               transition: 'all 0.2s'
             }}
             onClick={async () => {
+              if (!isOnline) return
               try {
                 await useGroupStore.getState().updateGroup(group.id, { spotify_sync_enabled: group.spotify_sync_enabled ? 0 : 1 })
                 addToast({ message: `Spotify Sync ${group.spotify_sync_enabled ? 'Disabled' : 'Enabled'}`, type: 'success' })
@@ -214,12 +220,13 @@ export function GroupCard({ group, onEdit }) {
                 addToast({ message: 'Failed to update Spotify sync', type: 'error' })
               }
             }}
-            title="Toggle Spotify Media Sync"
+            title={isOnline ? "Toggle Spotify Media Sync" : "Group unreachable"}
           >
-            🎵 Sync {group.spotify_sync_enabled ? 'On' : 'Off'}
+            Sync {group.spotify_sync_enabled ? 'On' : 'Off'}
           </button>
           
           <button
+            disabled={!isOnline}
             style={{
               marginLeft: '0.5rem',
               display: 'inline-flex',
@@ -232,10 +239,12 @@ export function GroupCard({ group, onEdit }) {
               padding: '2px 10px',
               fontSize: '0.75rem',
               fontWeight: 600,
-              cursor: 'pointer',
+              cursor: isOnline ? 'pointer' : 'not-allowed',
+              opacity: isOnline ? 1 : 0.45,
               transition: 'all 0.2s'
             }}
             onClick={async () => {
+              if (!isOnline) return
               try {
                 await useGroupStore.getState().updateGroup(group.id, { weather_sync_enabled: group.weather_sync_enabled ? 0 : 1 })
                 addToast({ message: `Weather Sync ${group.weather_sync_enabled ? 'Disabled' : 'Enabled'}`, type: 'success' })
@@ -243,7 +252,7 @@ export function GroupCard({ group, onEdit }) {
                 addToast({ message: 'Failed to update Weather sync', type: 'error' })
               }
             }}
-            title="Toggle Weather Sync"
+            title={isOnline ? "Toggle Weather Sync" : "Group unreachable"}
           >
             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
               <path d="M17.5 19H9a7 7 0 1 1 6.71-9h1.79a4.5 4.5 0 1 1 0 9Z"/>

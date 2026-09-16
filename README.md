@@ -111,10 +111,14 @@ services:
   wledashboard:
     image: ghcr.io/upioneer/wledashboard:latest
     container_name: wledashboard
+    # Standard Bridge Mode: Port defaults to 8301 to eliminate collisions with Z-Wave JS UI, Grafana, and Uptime Kuma (3000/3001)
     ports:
-      - "3001:3001"
+      - "${PORT:-8301}:${PORT:-8301}"
+    # Optional: Linux Host Mode (Enables native mDNS discovery on Linux bare metal/VM hosts; comment out "ports:" if enabled)
+    # network_mode: host
     environment:
       - NODE_ENV=production
+      - PORT=${PORT:-8301}
       - DATA_DIR=/app/data
     volumes:
       - wledashboard_data:/app/data
@@ -135,18 +139,19 @@ docker compose up -d
 ```bash
 docker run -d \
   --name wledashboard \
-  -p 3001:3001 \
+  -p 8301:8301 \
   -e NODE_ENV=production \
+  -e PORT=8301 \
   -e DATA_DIR=/app/data \
   -v wledashboard_data:/app/data \
   --restart unless-stopped \
   ghcr.io/upioneer/wledashboard:latest
 ```
 
-Access the application in your browser at `http://localhost:3001`.
+Access the application in your browser at `http://localhost:8301`.
 
 * Persistence: All configuration, groups, and device states persist in the `wledashboard_data` volume mounted to `/app/data`.
-* Local Discovery: Standard bridge port mapping routes web traffic on port 3001. On Linux bare metal hosts or LXC containers where mDNS broadcast discovery across subnets is required, `network_mode: host` can optionally be configured.
+* Local Discovery: Standard bridge port mapping routes web traffic on port 8301 (preventing collisions with Z-Wave JS UI, Grafana, or Uptime Kuma). On Linux bare metal hosts or LXC containers where mDNS broadcast discovery across subnets is required, `network_mode: host` can optionally be configured.
 
 ---
 

@@ -367,6 +367,23 @@ button.chip:hover {
   background-color: var(--surface-raised);
 }
 
+.chipDisabled,
+button.chip:disabled,
+.actionChip:disabled {
+  opacity: 0.45;
+  cursor: not-allowed !important;
+  pointer-events: none;
+}
+
+.chipDisabled:hover,
+button.chip:disabled:hover,
+.actionChip:disabled:hover {
+  background-color: var(--surface-overlay) !important;
+  border-color: var(--border-subtle) !important;
+  color: var(--text-secondary) !important;
+  box-shadow: none !important;
+}
+
 .ipMenuWrapper {
   margin-left: auto;
   position: relative;

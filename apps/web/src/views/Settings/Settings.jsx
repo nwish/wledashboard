@@ -25,28 +25,23 @@ const DEFAULTS = {
 }
 
 
-/*
 const CONTRIBUTORS = [
-  {
-    name: 'ccalbreath',
-    githubUrl: 'https://github.com/ccalbreath',
-    role: 'Bug Report',
-    description: 'Reported WLED firmware version not updating after OTA firmware updates.',
-    issueNumber: 1,
-    issueUrl: 'https://github.com/upioneer/WLEDashboard/issues/1',
-    fixedVersion: 'v0.19.0',
-  },
-  {
-    name: 'shr00mie',
-    githubUrl: 'https://github.com/shr00mie',
-    role: 'Bug Report',
-    description: 'Reported error when unchecking Orbital Intro toggle in Spatial View.',
-    issueNumber: 2,
-    issueUrl: 'https://github.com/upioneer/WLEDashboard/issues/2',
-    fixedVersion: 'v0.19.0',
-  },
-]
-*/
+  { name: 'ccalbreath', platform: 'github' },
+  { name: 'johnsonflix', platform: 'reddit' },
+  { name: 'Netmindz', platform: 'reddit' },
+  { name: 'New-Lawyer-2913', platform: 'reddit' },
+  { name: 'pubultrastar', platform: 'reddit' },
+  { name: 'Rev-777', platform: 'reddit' },
+  { name: 'shr00mie', platform: 'github' },
+  { name: 'sitbon', platform: 'reddit' },
+  { name: 'somejock', platform: 'reddit' },
+  { name: 'Sos0king', platform: 'reddit' },
+  { name: 'ssjucrono', platform: 'reddit' },
+  { name: 'tybyte', platform: 'reddit' },
+  { name: 'Unlucky_Quote6394', platform: 'reddit' },
+  { name: 'wivaca2', platform: 'reddit' },
+  { name: 'zero-degrees28', platform: 'reddit' },
+].sort((a, b) => a.name.localeCompare(b.name, undefined, { sensitivity: 'base' }))
 
 export function Settings() {
   const addToast = useUIStore(s => s.addToast)
@@ -429,22 +424,18 @@ export function Settings() {
                 <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.5rem', marginBottom: '0.5rem' }}>
                   <input 
                     readOnly 
-                    value={window.location.protocol === 'https:' 
+                    value={window.location.protocol === 'https:' || window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
                       ? `${window.location.origin}/api/spotify/callback`
-                      : (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')
-                        ? `${window.location.protocol}//${window.location.hostname}:3001/api/spotify/callback`
-                        : `http://localhost:3001/api/spotify/callback`
+                      : `http://localhost:${window.location.port || '8301'}/api/spotify/callback`
                     }
                     style={{ flex: 1, background: '#1a1d29', border: '1px solid #2d3348', borderRadius: '4px', padding: '0.4rem 0.6rem', color: '#a5b4fc', fontFamily: 'monospace', fontSize: '0.8rem' }}
                   />
                   <button 
                     type="button"
                     onClick={async () => {
-                      const uri = window.location.protocol === 'https:' 
+                      const uri = window.location.protocol === 'https:' || window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
                         ? `${window.location.origin}/api/spotify/callback`
-                        : (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')
-                          ? `${window.location.protocol}//${window.location.hostname}:3001/api/spotify/callback`
-                          : `http://localhost:3001/api/spotify/callback`
+                        : `http://localhost:${window.location.port || '8301'}/api/spotify/callback`
                       const ok = await copyToClipboard(uri)
                       if (ok) {
                         setCopiedSpotifyUri(true)
@@ -472,7 +463,7 @@ export function Settings() {
                 </div>
                 {!(window.location.protocol === 'https:' || window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') && (
                   <div style={{ marginTop: '0.5rem', padding: '0.75rem', background: '#3f1616', border: '1px solid #7f1d1d', borderRadius: '6px', color: '#fca5a5', fontSize: '0.8rem' }}>
-                    <strong>Warning:</strong> You are accessing this dashboard via an insecure IP (<code>{window.location.hostname}</code>). Spotify will reject this IP. You must temporarily access the dashboard via <code>http://localhost:3001</code> (e.g. from the host machine or via SSH tunnel) to perform the initial Spotify connection, or set up a reverse proxy with HTTPS.
+                    <strong>Warning:</strong> You are accessing this dashboard via an insecure IP (<code>{window.location.hostname}</code>). Spotify will reject this IP. You must temporarily access the dashboard via <code>http://localhost:{window.location.port || '8301'}</code> (e.g. from the host machine or via SSH tunnel) to perform the initial Spotify connection, or set up a reverse proxy with HTTPS.
                   </div>
                 )}
               </li>
@@ -1004,54 +995,6 @@ export function Settings() {
             </div>
           </section>
         )}
-        {/* Community & Special Thanks (disabled pending design & privacy/endorsement policy review)
-        <section className={styles.section} aria-labelledby="community-heading">
-          <h2 id="community-heading" className={styles.sectionTitle}>Community & Special Thanks</h2>
-          <p className={styles.sectionDesc}>
-            Special thanks to community members whose bug reports, feedback, and contributions help make WLEDashboard better.
-          </p>
-          <div className={styles.contributorsGrid}>
-            {CONTRIBUTORS.map((c) => (
-              <div key={c.name} className={styles.contributorCard}>
-                <div className={styles.contributorHeader}>
-                  <a
-                    href={c.githubUrl}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className={styles.contributorProfile}
-                  >
-                    <div className={styles.contributorAvatar}>
-                      <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
-                        <path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0 0 24 12c0-6.63-5.37-12-12-12z"/>
-                      </svg>
-                    </div>
-                    <span>@{c.name}</span>
-                  </a>
-                  <span className={styles.contributorRoleBadge}>{c.role}</span>
-                </div>
-                <p className={styles.contributorDesc}>{c.description}</p>
-                <div className={styles.contributorFooter}>
-                  <a
-                    href={c.issueUrl}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className={styles.issueLink}
-                  >
-                    <span>Issue #{c.issueNumber}</span>
-                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-                      <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/>
-                      <polyline points="15 3 21 3 21 9"/>
-                      <line x1="10" y1="14" x2="21" y2="3"/>
-                    </svg>
-                  </a>
-                  <span className={styles.fixedBadge}>{c.fixedVersion}</span>
-                </div>
-              </div>
-            ))}
-          </div>
-        </section>
-        */}
-
         {/* Advanced Mode */}
         <section className={styles.section} aria-labelledby="advanced-heading">
           <div className={styles.sectionHeader}>
@@ -1087,6 +1030,38 @@ export function Settings() {
             <AboutRow label="Version" value={`v${__APP_VERSION__}`} />
             <AboutRow label="Storage" value="Local SQLite (local-first, no cloud)" />
             <AboutRow label="License" value="All Rights Reserved (Copyright (c) 2026 Jasen Henry)" />
+          </div>
+
+          {/* Community & Special Thanks Infinite Marquee */}
+          <div className={styles.specialThanksSection}>
+            <div className={styles.specialThanksHeader}>
+              <h3 className={styles.specialThanksTitle}>Community & Special Thanks</h3>
+            </div>
+            <p className={styles.specialThanksDesc}>
+              Special thanks to community members whose bug reports, feature requests, and feedback help shape WLEDashboard. (Hover to pause)
+            </p>
+            <div className={styles.thanksMarqueeContainer}>
+              <div className={styles.thanksMarqueeTrack}>
+                {[...CONTRIBUTORS, ...CONTRIBUTORS].map((c, idx) => (
+                  <div key={`${c.name}-${idx}`} className={styles.thanksRow}>
+                    <span className={`${styles.platformIcon} ${c.platform === 'github' ? styles.platformIconGithub : styles.platformIconReddit}`}>
+                      {c.platform === 'github' ? (
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+                          <path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0 0 24 12c0-6.63-5.37-12-12-12z"/>
+                        </svg>
+                      ) : (
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+                          <path d="M12 0A12 12 0 0 0 0 12a12 12 0 0 0 12 12 12 12 0 0 0 12-12A12 12 0 0 0 12 0zm5.01 4.744c.688 0 1.25.561 1.25 1.249a1.25 1.25 0 0 1-2.498.056l-2.597-.547-.8 3.747c1.824.07 3.48.632 4.674 1.488.308-.309.73-.491 1.207-.491.968 0 1.754.786 1.754 1.754 0 .716-.435 1.333-1.01 1.614a3.111 3.111 0 0 1 .042.52c0 2.694-3.13 4.87-7.004 4.87-3.874 0-7.004-2.176-7.004-4.87 0-.183.015-.366.043-.534A1.748 1.748 0 0 1 4.028 12c0-.968.786-1.754 1.754-1.754.463 0 .898.196 1.207.49 1.207-.883 2.878-1.43 4.744-1.487l.885-4.182a.342.342 0 0 1 .14-.197.35.35 0 0 1 .238-.042l2.906.617a1.214 1.214 0 0 1 1.108-.701zM9.25 12C8.561 12 8 12.562 8 13.25c0 .687.561 1.248 1.25 1.248.687 0 1.248-.561 1.248-1.249 0-.688-.561-1.249-1.249-1.249zm5.5 0c-.687 0-1.248.561-1.248 1.25 0 .687.561 1.248 1.249 1.248.688 0 1.249-.561 1.249-1.249 0-.687-.562-1.249-1.25-1.249zm-4.742 3.892a.342.342 0 0 0-.25.578c.67.662 1.64.992 2.242.992.602 0 1.572-.33 2.242-.992a.342.342 0 1 0-.482-.486c-.516.516-1.32.744-1.76.744-.44 0-1.244-.228-1.76-.744a.339.339 0 0 0-.232-.092z"/>
+                        </svg>
+                      )}
+                    </span>
+                    <span className={styles.thanksName}>
+                      {c.name}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </div>
           </div>
         </section>
       </div>

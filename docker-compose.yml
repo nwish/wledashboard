@@ -4,10 +4,18 @@ services:
   wledashboard:
     image: ghcr.io/upioneer/wledashboard:latest
     container_name: wledashboard
+    # Standard Bridge Mode (Universal across Linux, macOS, Windows):
+    # Port defaults to 8301 to eliminate collisions with Z-Wave JS UI, Grafana, and Uptime Kuma (3000/3001).
     ports:
-      - "3001:3001"
+      - "${PORT:-8301}:${PORT:-8301}"
+
+    # Optional: Linux Host Mode (Enables native mDNS/Bonjour auto-discovery on Linux bare-metal/VM hosts).
+    # Note: If enabling host mode, comment out the "ports:" section above.
+    # network_mode: host
+
     environment:
       - NODE_ENV=production
+      - PORT=${PORT:-8301}
       - DATA_DIR=/app/data
     volumes:
       - wledashboard_data:/app/data

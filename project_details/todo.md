@@ -125,3 +125,13 @@
 
 * [x] Dynamic Weather Sync (OpenWeatherMap API, Live Status Widget, Condition Simulator, and Automation Triggers)
 * [ ] Pixel Art & Preset Community Hub
+
+## FUTURE BACKLOG (Rainy Day)
+
+* [ ] Consider user preference toggle in Settings / Spatial View to swap mouse button actions (Left Click Pan vs Right Click Rotate)
+* [ ] PixelForge support and integration for 2D matrix art and animated GIF assets
+* [ ] Robust WLED strip segment control mastered on the dashboard
+* [ ] Segment control in the 3D spatial visualizer with declared bend angles at specified pixel counts
+* [ ] Proxmox VE Helper Script for 1-click LXC automated container deployment
+* [ ] GhostPoly-inspired procedural blueprint to 3D room spatial mesh extrusion
+

@@ -22,9 +22,11 @@ Include:
 * Steps to reproduce.
 * The OS and environment you are running on.
 * Any relevant terminal output or logs.
+* System Diagnostic Report: In the **Advanced** view (enabled via Settings), open the **Diagnostics** tab and click **Copy Diagnostic Report**. Pasting this pre-formatted Markdown JSON block directly into your GitHub issue provides immediate insight into process telemetry, database integrity, and network connectivity.
 
-### 3. Discussions
-Join the conversation! Feel free to open a **Discussion** (if enabled) or an Issue to ask questions, share how you are using the project, or discuss potential architectural patterns.
+### 3. Community Discussions
+GitHub Discussions is currently not enabled on this repository. To ask questions, share your setup, discuss potential ideas, or connect with other users, please join our ongoing Reddit discussion:
+* [r/WLED WLEDashboard Discussion](https://www.reddit.com/r/WLED/comments/1wfcc8u/wledashboard/)
 
 ---
 

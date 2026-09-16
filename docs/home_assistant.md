@@ -28,7 +28,7 @@ WLEDashboard provides comprehensive integration with Home Assistant through two 
 ### Configuration
 1. Go to **Settings** -> **Devices & Services** -> **Add Integration**.
 2. Search for **WLEDashboard**.
-3. Enter your WLEDashboard server IP (`Host`), port (`3001` default), and **Long-Lived API Token** (copied from WLEDashboard -> Settings -> Integrations).
+3. Enter your WLEDashboard server IP (`Host`), port (`8301` default), and **Long-Lived API Token** (copied from WLEDashboard -> Settings -> Integrations).
 4. Click **Submit**.
 
 ---

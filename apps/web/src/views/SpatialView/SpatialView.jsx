@@ -505,11 +505,11 @@ export function SpatialView() {
           <div className={styles.legendTitle}>3D Navigation Controls</div>
           <div className={styles.legendRow}>
             <span className={styles.legendKey}>Rotate 3D Scene</span>
-            <span className={styles.legendAction}>Left Click + Drag</span>
+            <span className={styles.legendAction}>Right Click + Drag</span>
           </div>
           <div className={styles.legendRow}>
             <span className={styles.legendKey}>Pan Camera</span>
-            <span className={styles.legendAction}>Right Click + Drag</span>
+            <span className={styles.legendAction}>Left Click + Drag</span>
           </div>
           <div className={styles.legendRow}>
             <span className={styles.legendKey}>Zoom View</span>

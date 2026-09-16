@@ -740,6 +740,7 @@ export function SpatialCanvas({ unitSystem = 'imperial' }) {
         </group>
 
         {/* Smooth Orbit Camera Controls */}
+        {/* TODO: Consider adding a user preference toggle in Settings/SpatialView to allow customizing/swapping mouse buttons */}
         {!introActive && (
           <OrbitControls
             makeDefault
@@ -749,6 +750,11 @@ export function SpatialCanvas({ unitSystem = 'imperial' }) {
             minDistance={3}
             maxDistance={30}
             maxPolarAngle={Math.PI / 2.1}
+            mouseButtons={{
+              LEFT: THREE.MOUSE.PAN,
+              MIDDLE: THREE.MOUSE.DOLLY,
+              RIGHT: THREE.MOUSE.ROTATE,
+            }}
           />
         )}
       </Canvas>

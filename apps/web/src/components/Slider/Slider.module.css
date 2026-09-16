@@ -80,3 +80,22 @@
 .wrapper:hover .thumbOverlay {
   transform: translate(-50%, -50%) scale(1.15);
 }
+
+.disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+  pointer-events: none;
+}
+
+.disabled .input {
+  cursor: not-allowed;
+  pointer-events: none;
+}
+
+.disabled:hover .thumbOverlay {
+  transform: translate(-50%, -50%) scale(1);
+}
+
+.labelDisabled {
+  color: var(--text-tertiary);
+}

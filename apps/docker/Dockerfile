@@ -34,14 +34,14 @@ COPY --from=web-builder /build/apps/web/dist ./apps/web/dist
 RUN mkdir -p /data
 
 ENV NODE_ENV=production
-ENV PORT=3001
+ENV PORT=8301
 ENV HOST=0.0.0.0
 ENV DATA_DIR=/data
 
 # Health check
 HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
-  CMD wget -qO- http://localhost:3001/api/health || exit 1
+  CMD wget -qO- http://localhost:8301/api/health || exit 1
 
-EXPOSE 3001
+EXPOSE 8301
 
 CMD ["node", "apps/api/src/server.js"]

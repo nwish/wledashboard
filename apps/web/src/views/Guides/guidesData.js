@@ -88,6 +88,11 @@ export const GUIDES = [
               "Local-first SQLite database with unlimited routines, palettes, and device history."
             ],
             [
+              "Segment Architecture",
+              "Volatile RAM segments (max 16-32); raw start/stop index math; wiped on uncommitted reboot.",
+              "Dashboard-mastered persistent segments, auto-balanced pixel math, 3D bend angles, and instant hardware compilation."
+            ],
+            [
               "Schedules & Automations",
               "Basic local time-of-day clock triggers stored on ESP.",
               "Astronomical sun elevation triggers (sunrise, sunset, golden hour) and live weather conditions."
@@ -109,6 +114,17 @@ export const GUIDES = [
             ]
           ]
         },
+      },
+      {
+        title: "Conscious Architecture: WLEDashboard Segments vs Microcontroller Firmware Segments",
+        content: "A core architectural decision in WLEDashboard is treating the centralized database as the master authority for strip segments, rather than pulling volatile segment definitions from microcontroller firmware. This design is rooted in data-driven reliability and usability advantages:",
+        steps: [
+          "Immunity to Power Brownouts & Volatility: Native WLED firmware holds active segments in volatile microcontroller RAM. Unsaved segment layouts vanish on sudden power loss or reboots. WLEDashboard commits segment topologies permanently to local SQLite, pushing compiled layouts atomically to hardware and eliminating LittleFS flash memory wear.",
+          "Transcending Hardware Memory Limits: Physical ESP32 microcontrollers enforce a hard limit of 16 to 32 segments (and ESP8266 caps at 10 to 16). WLEDashboard decouples logical room division from hardware memory constraints, allowing arbitrarily detailed layouts and 3D geometric bend anchors.",
+          "Zero-Math Ergonomics & Auto-Balancing: Native WLED requires calculating error-prone start and stop pixel index numbers. WLEDashboard auto-balances unassigned pixel counts across segments, accepts intuitive relative physical bend angles (+90°, -45°), and guarantees hardware LED count parity.",
+          "High-Efficiency Silicon Execution: Rather than streaming high-bandwidth raw pixel arrays over Wi-Fi (which suffers from jitter, packet drops, and host sleep interruptions), WLEDashboard compiles segment topologies into native WLED JSON commands. The microcontroller continues executing rendering locally in silicon at 42+ FPS with zero network overhead.",
+          "Instant Hardware Replacement & Recovery: If an ESP32 microcontroller burns out, swapping hardware requires only entering the new IP address and clicking 'Push Configuration'. WLEDashboard reprovisions the entire multi-segment installation in seconds without tedious manual re-entry in the OEM web interface."
+        ],
       },
       {
         title: "How They Work Together",
@@ -177,7 +193,7 @@ export const GUIDES = [
           "Restart Home Assistant (Settings > System > Restart).",
           "In Home Assistant, navigate to Settings > Devices & Services > Add Integration.",
           "Search for 'WLEDashboard' and select it.",
-          "Enter your WLEDashboard host IP, port (default: 3001), and paste your Long-Lived API Token (retrieved from WLEDashboard Settings > Home Assistant & MQTT).",
+          "Enter your WLEDashboard host IP, port (default: 8301 or custom mapped port), and paste your Long-Lived API Token (retrieved from WLEDashboard Settings > Home Assistant & MQTT).",
           "Click Submit. Your spatial rooms, groups, and routines will be created as native Home Assistant entities immediately."
         ],
         callout: {
@@ -311,7 +327,7 @@ export const GUIDES = [
         title: "Local Network (HTTP) vs Secure HTTPS Domains",
         content: "Depending on your local network architecture, browser installation policies vary slightly:",
         steps: [
-          "Direct Local IP over HTTP (e.g. http://192.168.1.100:3001): Apple Safari fully supports Add to Home Screen over internal HTTP without restrictions. Android Chrome allows manual installation via the three-dot browser menu.",
+          "Direct Local IP over HTTP (e.g. http://192.168.1.100:8301): Apple Safari fully supports Add to Home Screen over internal HTTP without restrictions. Android Chrome allows manual installation via the three-dot browser menu.",
           "Reverse Proxy with HTTPS (Nginx Proxy Manager, Cloudflare, Traefik): Full automated PWA installation prompts and service worker caching are active across all Android and desktop PWA browsers."
         ],
         callout: {
@@ -597,12 +613,20 @@ export const GUIDES = [
     tags: ["docker", "compose", "mdns", "networking", "sqlite", "lan", "http", "clipboard"],
     sections: [
       {
-        title: "Automatic Device Discovery (mDNS)",
-        content: "WLEDashboard scans the local subnet using multicast DNS (mDNS for service type _wled._tcp). When a WLED device is turned on, the discovery service automatically identifies its IP address, MAC address, device name, and hardware configuration.",
+        title: "Zero-Configuration Local Discovery & Security Safeguards",
+        content: "WLEDashboard pairs passive mDNS monitoring with intelligent local network discovery to automatically identify and synchronize WLED controllers across your home, studio, or commercial space. Engineered for high security and stability, the discovery engine incorporates multi-layer safeguards:",
+        steps: [
+          "Private Network Containment (RFC 1918): Automated discovery is strictly restricted to private network boundaries (10.0.0.0/8, 172.16.0.0/12, 192.168.0.0/16). The engine will never probe public WAN endpoints or external internet addresses.",
+          "Remote & Cloudflare Tunnel Isolation: When accessing WLEDashboard remotely over Cloudflare Tunnels, public domain names, or cellular data, external network probing is decoupled to ensure no unauthorized outbound traffic occurs.",
+          "VPN & Mesh Overlay Protection: Recognizes Carrier-Grade NAT (CGNAT) address ranges such as Tailscale (100.64.0.0/10) and virtual overlays, preventing scanning across virtual peer-to-peer tunnels.",
+          "Container Virtualization Guards: Safely differentiates between internal Docker container bridge subnets and physical local area networks to eliminate unnecessary container-to-container queries.",
+          "Enterprise & Custom Subnet Expansion: For commercial spaces, production studios, or businesses using segmented lighting VLANs, administrators can expand the scan scope by defining custom CIDR ranges under the Advanced management view.",
+          "Router & Hardware Protection: Discovery queries enforce strict concurrency ceilings and low-latency timeouts to ensure small business routers, Wi-Fi access points, and microcontrollers remain responsive and unburdened."
+        ],
       },
       {
         title: "Docker Compose Deployment",
-        content: "Deploying WLEDashboard in Docker provides a self-contained production stack with pre-built images from GitHub Container Registry:",
+        content: "Deploying WLEDashboard in Docker provides a self-contained production stack with pre-built images from GitHub Container Registry. Port 8301 is used by default to prevent port collisions with other popular home automation services such as Z-Wave JS UI, Grafana, and Uptime Kuma (ports 3000 and 3001):",
         code: {
           language: "yaml",
           description: "Standard docker-compose.yml configuration",
@@ -613,10 +637,18 @@ export const GUIDES = [
             "  wledashboard:",
             "    image: ghcr.io/upioneer/wledashboard:latest",
             "    container_name: wledashboard",
+            "    # Standard Bridge Mode (Universal across Linux, macOS, Windows):",
+            "    # Port defaults to 8301 to eliminate collisions with Z-Wave JS UI, Grafana, and Uptime Kuma (3000/3001).",
             "    ports:",
-            "      - \"3001:3001\"",
+            "      - \"${PORT:-8301}:${PORT:-8301}\"",
+            "",
+            "    # Optional: Linux Host Mode (Enables native mDNS/Bonjour auto-discovery on Linux bare-metal/VM hosts).",
+            "    # Note: If enabling host mode, comment out the \"ports:\" section above.",
+            "    # network_mode: host",
+            "",
             "    environment:",
             "      - NODE_ENV=production",
+            "      - PORT=${PORT:-8301}",
             "      - DATA_DIR=/app/data",
             "    volumes:",
             "      - wledashboard_data:/app/data",
@@ -628,16 +660,18 @@ export const GUIDES = [
         },
       },
       {
-        title: "Bridge Mode vs Host Networking",
-        content: "When running Docker containers on Linux hosts or Proxmox LXC containers:",
+        title: "Bridge Mode vs Host Networking (Understanding mDNS in Docker)",
+        content: "mDNS discovery operates over UDP multicast (224.0.0.251:5353). Because Docker's virtual bridge network (docker0) isolates multicast packets from the physical LAN by default, understanding your deployment network mode is key:",
         steps: [
-          "Bridge Networking (Default): Exposes port 3001 for browser access. Suitable for direct IP device management.",
-          "Host Networking (network_mode: host): Required if you want the containerized backend to receive raw mDNS multicast UDP broadcasts (_wled._tcp) across physical subnet boundaries."
+          "Bridge Networking (Default & Recommended): Runs out of the box on Linux, macOS, Windows, Synology, and Unraid. Web traffic routes via port 8301 with zero port collision risk. Devices are managed directly by typing their local IP address in the dashboard or Device Manager.",
+          "Host Networking (network_mode: host): Recommended strictly for native Linux hosts (Ubuntu, Debian, Proxmox LXC) if zero-configuration mDNS auto-discovery is desired. Docker Desktop on macOS and Windows does NOT support host mode and will make the container unreachable. When enabling host mode, comment out the 'ports:' mapping section in docker-compose.yml.",
+          "Happy Medium 1 - Host mDNS Reflector (Avahi): On Linux hosts running avahi-daemon, enable 'enable-reflector=yes' in /etc/avahi/avahi-daemon.conf. Avahi automatically forwards physical LAN multicast packets into the docker0 bridge, allowing containers in standard bridge mode to receive mDNS announcements.",
+          "Happy Medium 2 - Docker Macvlan / Ipvlan: Assigns the container an independent IP directly on your physical home subnet. The container receives native multicast mDNS while keeping host ports and localhost processes isolated."
         ],
       },
       {
         title: "LAN HTTP vs Secure Contexts (Clipboard Copying)",
-        content: "Modern browsers disable the async navigator.clipboard API on non-HTTPS origins (except localhost). When accessing WLEDashboard over local IP (e.g. http://192.168.1.50:3001), WLEDashboard uses a specialized universal fallback utility (clipboard.js) to guarantee click-to-copy functionality for IP addresses and credentials across all browser environments.",
+        content: "Modern browsers disable the async navigator.clipboard API on non-HTTPS origins (except localhost). When accessing WLEDashboard over local IP (e.g. http://192.168.1.50:8301), WLEDashboard uses a specialized universal fallback utility (clipboard.js) to guarantee click-to-copy functionality for IP addresses and credentials across all browser environments.",
       },
       {
         title: "Reverse Proxies, SSL & WebSockets (Nginx Proxy Manager & Cloudflare)",

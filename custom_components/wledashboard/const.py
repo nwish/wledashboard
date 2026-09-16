@@ -2,7 +2,7 @@
 
 DOMAIN = "wledashboard"
 DEFAULT_NAME = "WLEDashboard"
-DEFAULT_PORT = 3001
+DEFAULT_PORT = 8301
 
 CONF_HOST = "host"
 CONF_PORT = "port"

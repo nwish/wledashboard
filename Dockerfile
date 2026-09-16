@@ -20,6 +20,7 @@ FROM node:22-alpine AS runner
 WORKDIR /app
 
 ENV NODE_ENV=production
+ENV PORT=8301
 ENV DATA_DIR=/app/data
 
 # Install runtime dependencies for native addons and create data directory
@@ -32,6 +33,6 @@ COPY --from=builder /app/apps/web/dist ./apps/web/dist
 COPY --from=builder /app/apps/api ./apps/api
 COPY --from=builder /app/apps/web/package.json ./apps/web/package.json
 
-EXPOSE 3001
+EXPOSE 8301
 
 CMD ["node", "apps/api/src/server.js"]

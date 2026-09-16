@@ -13,4 +13,4 @@ Official Home Assistant custom integration for [WLEDashboard](https://github.com
 1. In WLEDashboard, navigate to **Settings** -> **Home Assistant & MQTT Integration**.
 2. Copy your **Long-Lived API Token**.
 3. In Home Assistant, go to **Settings** -> **Devices & Services** -> **Add Integration** -> search **WLEDashboard**.
-4. Enter your WLEDashboard server IP, Port (`3001` default), and paste your API Token.
+4. Enter your WLEDashboard server IP, Port (`8301` default), and paste your API Token.

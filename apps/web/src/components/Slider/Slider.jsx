@@ -23,6 +23,7 @@ export function Slider({
   step = 1,
   label,
   id,
+  disabled = false,
 }) {
   const [internalVal, setInternalVal] = useState(value)
   const isDraggingRef = useRef(false)
@@ -37,16 +38,19 @@ export function Slider({
   const pct = Math.round(((displayVal - min) / (max - min)) * 100)
 
   const trackStyle = {
-    background: color
-      ? `linear-gradient(to right, ${color} 0%, ${color} ${pct}%, var(--surface-overlay) ${pct}%)`
-      : `linear-gradient(to right, var(--accent-amber) 0%, var(--accent-amber) ${pct}%, var(--surface-overlay) ${pct}%)`,
+    background: disabled
+      ? 'var(--surface-input)'
+      : color
+        ? `linear-gradient(to right, ${color} 0%, ${color} ${pct}%, var(--surface-overlay) ${pct}%)`
+        : `linear-gradient(to right, var(--accent-amber) 0%, var(--accent-amber) ${pct}%, var(--surface-overlay) ${pct}%)`,
   }
 
-  const thumbGlow = color && pct > 0
+  const thumbGlow = !disabled && color && pct > 0
     ? { boxShadow: `0 0 ${6 + pct * 0.12}px 2px ${color}66` }
     : {}
 
   const handleChange = (e) => {
+    if (disabled) return
     const val = Number(e.target.value)
     isDraggingRef.current = true
     setInternalVal(val)
@@ -54,6 +58,7 @@ export function Slider({
   }
 
   const handlePointerUp = (e) => {
+    if (disabled) return
     const val = Number(e.target.value)
     isDraggingRef.current = false
     setInternalVal(val)
@@ -61,10 +66,13 @@ export function Slider({
   }
 
   return (
-    <div className={styles.wrapper}>
+    <div
+      className={[styles.wrapper, disabled && styles.disabled].filter(Boolean).join(' ')}
+      aria-disabled={disabled}
+    >
       {label && (
         <div className={styles.header}>
-          <label htmlFor={id} className={styles.label}>{label}</label>
+          <label htmlFor={id} className={[styles.label, disabled && styles.labelDisabled].filter(Boolean).join(' ')}>{label}</label>
           <span className={styles.value}>{pct}%</span>
         </div>
       )}
@@ -73,8 +81,9 @@ export function Slider({
           className={styles.thumbOverlay}
           style={{
             left: `${pct}%`,
-            backgroundColor: color && pct > 0 ? color : 'var(--text-primary)',
+            backgroundColor: disabled ? 'var(--text-tertiary)' : color && pct > 0 ? color : 'var(--text-primary)',
             boxShadow: thumbGlow.boxShadow ?? 'var(--shadow-1)',
+            opacity: disabled ? 0.4 : 1,
           }}
         />
         <input
@@ -84,6 +93,7 @@ export function Slider({
           max={max}
           step={step}
           value={displayVal}
+          disabled={disabled}
           onChange={handleChange}
           onPointerUp={handlePointerUp}
           className={styles.input}

@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
-import { systemApi } from '../../lib/api.js'
+import { systemApi, settingsApi } from '../../lib/api.js'
 import { useUIStore } from '../../stores/uiStore.js'
 import styles from './AdvancedView.module.css'
 
@@ -15,6 +15,8 @@ export function AdvancedView() {
   const [loading, setLoading] = useState(true)
   const [runningDiag, setRunningDiag] = useState(false)
   const [autoRefresh, setAutoRefresh] = useState(true)
+  const [customSubnets, setCustomSubnets] = useState('')
+  const [savingSubnets, setSavingSubnets] = useState(false)
 
   // Modals for destructive actions
   const [showSpatialModal, setShowSpatialModal] = useState(false)
@@ -23,6 +25,28 @@ export function AdvancedView() {
   const [actionInProgress, setActionInProgress] = useState(false)
 
   const refreshTimer = useRef(null)
+
+  // ── Fetch Discovery Scope Settings ──────────────────────────────────────────
+  useEffect(() => {
+    settingsApi.get().then(s => {
+      if (s?.custom_discovery_subnets) {
+        setCustomSubnets(s.custom_discovery_subnets)
+      }
+    }).catch(() => {})
+  }, [])
+
+  const handleSaveSubnets = async (e) => {
+    e.preventDefault()
+    setSavingSubnets(true)
+    try {
+      await settingsApi.update({ custom_discovery_subnets: customSubnets.trim() })
+      addToast({ message: 'Discovery scope updated successfully', type: 'success' })
+    } catch (err) {
+      addToast({ message: `Failed to save discovery scope: ${err.message}`, type: 'error' })
+    } finally {
+      setSavingSubnets(false)
+    }
+  }
 
   // ── Fetch Telemetry & Logs ──────────────────────────────────────────────────
   const fetchTelemetryAndLogs = useCallback(async (quiet = false) => {
@@ -513,6 +537,51 @@ export function AdvancedView() {
               </div>
             </div>
           )}
+
+          {/* Network Discovery Scope & Subnet Overrides */}
+          <div style={{ marginTop: '16px', padding: '16px', backgroundColor: 'var(--surface-raised)', borderRadius: '8px', border: '1px solid var(--border-subtle)' }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px', flexWrap: 'wrap', gap: '8px' }}>
+              <h3 className={styles.panelTitle} style={{ fontSize: '1rem', margin: 0 }}>
+                Network Discovery Scope (Subnet Overrides)
+              </h3>
+              <span className={styles.badge} style={{
+                backgroundColor: customSubnets.trim() ? 'rgba(99, 102, 241, 0.15)' : 'rgba(16, 185, 129, 0.15)',
+                color: customSubnets.trim() ? 'var(--accent-primary, #818cf8)' : '#34d399',
+                borderColor: customSubnets.trim() ? 'rgba(99, 102, 241, 0.3)' : 'rgba(16, 185, 129, 0.3)'
+              }}>
+                {customSubnets.trim() ? 'Custom Scope Active' : 'RFC 1918 Standard (Default)'}
+              </span>
+            </div>
+            <p style={{ color: 'var(--text-secondary)', fontSize: '0.85rem', margin: '0 0 12px 0', lineHeight: 1.5 }}>
+              Automated discovery is strictly bounded to standard RFC 1918 private subnets by default. For enterprise environments, custom lighting VLANs, or non-standard subnets, enter comma-separated IPv4 subnets or CIDRs (e.g. <code>192.168.100.0/24, 10.50.0.0/24</code>) to expand the discovery boundary.
+            </p>
+            <form onSubmit={handleSaveSubnets} style={{ display: 'flex', gap: '8px', alignItems: 'center', flexWrap: 'wrap' }}>
+              <input
+                type="text"
+                value={customSubnets}
+                onChange={e => setCustomSubnets(e.target.value)}
+                placeholder="e.g. 192.168.100.0/24, 10.50.0.0/24"
+                style={{
+                  flex: 1,
+                  minWidth: '260px',
+                  padding: '8px 12px',
+                  backgroundColor: 'var(--surface-base, #11131a)',
+                  border: '1px solid var(--border-subtle, #2d3348)',
+                  borderRadius: '6px',
+                  color: 'var(--text-primary, #fff)',
+                  fontFamily: 'monospace',
+                  fontSize: '0.85rem'
+                }}
+              />
+              <button
+                type="submit"
+                className={`${styles.btnAction} ${styles.btnPrimary}`}
+                disabled={savingSubnets}
+              >
+                {savingSubnets ? 'Saving...' : 'Save Scope'}
+              </button>
+            </form>
+          </div>
 
           {/* Device Probing Table */}
           {diagnostics?.checks?.devices_connectivity && diagnostics.checks.devices_connectivity.length > 0 && (

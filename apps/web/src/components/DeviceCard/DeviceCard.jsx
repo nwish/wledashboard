@@ -238,6 +238,7 @@ export function DeviceCard({ device, isManualSort, dragAttributes, dragListeners
 
   // Quick Action Chips
   const startChipEdit = (chip, initialVal) => {
+    if (!isOnline) return
     setEditingChip(chip)
     setChipEditVal(initialVal)
   }
@@ -593,9 +594,14 @@ export function DeviceCard({ device, isManualSort, dragAttributes, dragListeners
             <div className={styles.hardwareGroup}>
               {device.led_count ? (
                 <span 
-                  className={[styles.chip, styles.editableChip, !device.led_density && styles.singleHardwareChip].filter(Boolean).join(' ')} 
-                  title="Click to edit LED count"
-                  onClick={() => startChipEdit('led_count', device.led_count)}
+                  className={[
+                    styles.chip, 
+                    isOnline ? styles.editableChip : styles.chipDisabled, 
+                    !device.led_density && styles.singleHardwareChip
+                  ].filter(Boolean).join(' ')} 
+                  title={isOnline ? "Click to edit LED count" : `${device.led_count} LEDs (Device unreachable)`}
+                  onClick={isOnline ? () => startChipEdit('led_count', device.led_count) : undefined}
+                  aria-disabled={!isOnline}
                 >
                   {device.led_count} LEDs
                 </span>
@@ -603,9 +609,14 @@ export function DeviceCard({ device, isManualSort, dragAttributes, dragListeners
 
               {device.led_density ? (
                 <span 
-                  className={[styles.chip, styles.editableChip, styles.densityChip].join(' ')} 
-                  title="Click to edit LED density"
-                  onClick={() => startChipEdit('led_density', device.led_density)}
+                  className={[
+                    styles.chip, 
+                    isOnline ? styles.editableChip : styles.chipDisabled, 
+                    styles.densityChip
+                  ].filter(Boolean).join(' ')} 
+                  title={isOnline ? "Click to edit LED density" : `${device.led_density}/m (Device unreachable)`}
+                  onClick={isOnline ? () => startChipEdit('led_density', device.led_density) : undefined}
+                  aria-disabled={!isOnline}
                 >
                   {device.led_density}/m
                 </span>
@@ -615,9 +626,11 @@ export function DeviceCard({ device, isManualSort, dragAttributes, dragListeners
             {/* Static right-aligned Action Chicklets (width-locked for symmetry) */}
             <div className={styles.actionGroup}>
               <button
-                className={[styles.chip, styles.actionChip].join(' ')}
+                className={[styles.chip, styles.actionChip, !isOnline && styles.chipDisabled].filter(Boolean).join(' ')}
+                disabled={!isOnline}
                 style={device.spotify_sync_enabled ? { backgroundColor: 'var(--accent-emerald)', color: '#000' } : {}}
                 onClick={async () => {
+                  if (!isOnline) return
                   try {
                     await updateDevice(device.id, { spotify_sync_enabled: device.spotify_sync_enabled ? 0 : 1 })
                     addToast({ message: `Spotify Sync ${device.spotify_sync_enabled ? 'Disabled' : 'Enabled'}`, type: 'success' })
@@ -625,15 +638,18 @@ export function DeviceCard({ device, isManualSort, dragAttributes, dragListeners
                     addToast({ message: 'Failed to update Spotify sync', type: 'error' })
                   }
                 }}
-                title="Toggle Spotify Sync"
+                title={isOnline ? "Toggle Spotify Sync" : "Device unreachable"}
+                aria-disabled={!isOnline}
               >
                 Sync
               </button>
 
               <button
-                className={[styles.chip, styles.actionChip].join(' ')}
+                className={[styles.chip, styles.actionChip, !isOnline && styles.chipDisabled].filter(Boolean).join(' ')}
+                disabled={!isOnline}
                 style={device.weather_sync_enabled ? { backgroundColor: 'var(--accent-cyan)', color: '#000' } : {}}
                 onClick={async () => {
+                  if (!isOnline) return
                   try {
                     await updateDevice(device.id, { weather_sync_enabled: device.weather_sync_enabled ? 0 : 1 })
                     addToast({ message: `Weather Sync ${device.weather_sync_enabled ? 'Disabled' : 'Enabled'}`, type: 'success' })
@@ -641,7 +657,8 @@ export function DeviceCard({ device, isManualSort, dragAttributes, dragListeners
                     addToast({ message: 'Failed to update Weather sync', type: 'error' })
                   }
                 }}
-                title="Toggle Weather Sync"
+                title={isOnline ? "Toggle Weather Sync" : "Device unreachable"}
+                aria-disabled={!isOnline}
               >
                 Weather
               </button>
@@ -653,9 +670,14 @@ export function DeviceCard({ device, isManualSort, dragAttributes, dragListeners
             <div className={styles.effectGroup}>
               {effectName && (
                 <span 
-                  className={[styles.chip, styles.effectChip, styles.editableChip].join(' ')} 
-                  title={`Click to edit effect: ${effectName}`}
-                  onClick={() => startChipEdit('effect', effectIndex ?? 0)}
+                  className={[
+                    styles.chip, 
+                    styles.effectChip, 
+                    isOnline ? styles.editableChip : styles.chipDisabled
+                  ].filter(Boolean).join(' ')} 
+                  title={isOnline ? `Click to edit effect: ${effectName}` : `${effectName} (Device unreachable)`}
+                  onClick={isOnline ? () => startChipEdit('effect', effectIndex ?? 0) : undefined}
+                  aria-disabled={!isOnline}
                 >
                   {effectName}
                 </span>
@@ -664,7 +686,7 @@ export function DeviceCard({ device, isManualSort, dragAttributes, dragListeners
 
             {/* Static right-aligned IP Chicklet (width-locked for symmetry) */}
             <div className={styles.ipGroup}>
-              <IpChip ip={device.ip_address} align="right" className={styles.cardIpChip} />
+              <IpChip ip={device.ip_address} align="right" className={styles.cardIpChip} disabled={!isOnline} />
             </div>
           </div>
         </div>

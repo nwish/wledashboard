@@ -59,7 +59,7 @@ function CopyIcon() {
  * - 'copy': copies IP address to clipboard
  * Also supports Ctrl/Cmd click or middle click to always open in new tab.
  */
-export function IpChip({ ip, className = '', compact = false, align = 'auto' }) {
+export function IpChip({ ip, className = '', compact = false, align = 'auto', disabled = false }) {
   const deviceIpClickAction = useUIStore(s => s.deviceIpClickAction ?? 'menu')
   const addToast = useUIStore(s => s.addToast)
 
@@ -70,12 +70,14 @@ export function IpChip({ ip, className = '', compact = false, align = 'auto' }) 
   const menuRef = useRef(null)
 
   const handleOpenInNewTab = useCallback((e) => {
+    if (disabled) return
     if (e && e.stopPropagation) e.stopPropagation()
     setShowMenu(false)
     window.open(`http://${ip}`, '_blank', 'noopener,noreferrer')
-  }, [ip])
+  }, [disabled, ip])
 
   const handleCopyIP = useCallback(async (e) => {
+    if (disabled) return
     if (e && e.stopPropagation) e.stopPropagation()
     setShowMenu(false)
     const success = await copyToClipboard(ip)
@@ -84,9 +86,10 @@ export function IpChip({ ip, className = '', compact = false, align = 'auto' }) 
     } else {
       addToast({ message: `Failed to copy ${ip}`, type: 'error', duration: 3000 })
     }
-  }, [ip, addToast])
+  }, [disabled, ip, addToast])
 
   const handleClick = useCallback((e) => {
+    if (disabled) return
     if (e && e.stopPropagation) e.stopPropagation()
 
     // Modifier keys (Cmd, Ctrl, Shift) or middle click always open in new tab
@@ -123,7 +126,7 @@ export function IpChip({ ip, className = '', compact = false, align = 'auto' }) 
         setShowMenu(true)
       }
     }
-  }, [deviceIpClickAction, showMenu, align, handleOpenInNewTab, handleCopyIP])
+  }, [disabled, deviceIpClickAction, showMenu, align, handleOpenInNewTab, handleCopyIP])
 
   useEffect(() => {
     if (!showMenu) return
@@ -161,15 +164,19 @@ export function IpChip({ ip, className = '', compact = false, align = 'auto' }) 
       <button
         ref={btnRef}
         type="button"
+        disabled={disabled}
         className={[
           styles.ipChip,
           compact && styles.compact,
           showMenu && styles.ipChipActive,
+          disabled && styles.disabled,
           className,
         ].filter(Boolean).join(' ')}
         onClick={handleClick}
         title={
-          deviceIpClickAction === 'open'
+          disabled
+            ? `${ip} (Device unreachable)`
+            : deviceIpClickAction === 'open'
             ? `Open http://${ip} (configured in Settings)`
             : deviceIpClickAction === 'copy'
             ? `Copy ${ip} (configured in Settings)`
@@ -177,9 +184,10 @@ export function IpChip({ ip, className = '', compact = false, align = 'auto' }) 
         }
         aria-haspopup="menu"
         aria-expanded={showMenu}
+        aria-disabled={disabled}
       >
         <span>{ip}</span>
-        {deviceIpClickAction === 'menu' && <CaretIcon />}
+        {deviceIpClickAction === 'menu' && !disabled && <CaretIcon />}
       </button>
 
       {showMenu && createPortal(
