@@ -2,9 +2,19 @@
 
 A high performance, local first control surface for WLED devices. Control 1 to 100 or more LED controllers from a single responsive interface with spring physics animations, group management, and automatic mDNS network discovery.
 
----
-
 ## UI Highlights
+
+### Interactive Demo Mode
+
+Explore the full dashboard, device controls, 3D spatial floorplans, and simulated OTA firmware updates in an in-memory virtualized hardware sandbox with zero physical microcontrollers attached.
+
+![Interactive Demo Mode](project_details/changelog/v0.23.0/screenshots/demo_preview_dashboard.png)
+
+### Virtual Sandbox & Safe Isolation
+
+Safely evaluate features, test multi-room configurations, and flash virtual firmware with complete isolation. Real physical devices and database records remain hidden and untouched while exploring the sandbox.
+
+![Demo Mode Activation Modal](project_details/changelog/v0.23.0/screenshots/demo_preview_modal.png)
 
 ### Dashboard
 
@@ -34,7 +44,7 @@ Automate lighting based on fixed times or astronomical sunrise/sunset triggers (
 
 Experience your lighting in 3D space with Three.js and React Three Fiber. View procedural room geometries, wireframe wall bounds, and real-time emissive LED light strips that pulse and glow matching actual device color and brightness. Includes a stunning holographic Earth orbital sequence.
 
-![3D Spatial Viewport](project_details/changelog/v0.18.0/screenshots/05-spatial-view.png)
+![3D Spatial Viewport](project_details/changelog/v0.23.0/screenshots/demo_preview_spatial.png)
 
 ### Effect Studio & Timeline Animator
 
@@ -156,6 +166,20 @@ docker compose pull && docker compose up -d
 
 * Preserving Bookmarks: If upgrading from versions prior to v0.21.0 and you wish to keep browser bookmarks on port 3001, map `3001:8301` under the ports section in your `docker-compose.yml`.
 * Automated Updates with Watchtower (Opt-In): The included `docker-compose.yml` provides a commented `com.centurylinklabs.watchtower.enable=true` label. Uncomment this label if you run Watchtower and wish to automate background container updates.
+
+---
+
+## Deployment (Proxmox VE LXC)
+
+Deploy WLEDashboard as an unprivileged Debian 12 LXC container on Proxmox VE with automated systemd service management and dedicated bridge networking:
+
+```bash
+bash -c "$(curl -fsSL https://raw.githubusercontent.com/upioneer/WLEDashboard/master/install/proxmox/wledashboard.sh)"
+```
+
+* Turnkey Execution: Provisions an LXC container with 1 CPU core, 2048MB RAM, 1024MB Swap, and 4GB disk storage.
+* Native Service: Runs as a managed `systemd` service (`wledashboard.service`) listening on port 8301 with auto-restart on boot.
+* One-Command Container Updates: To update the LXC installation in the future, run `pct exec <CTID> -- update-wledashboard` from the Proxmox host shell.
 
 ---
 
