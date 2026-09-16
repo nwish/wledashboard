@@ -76,6 +76,7 @@ info "Installing npm dependencies across workspaces..."
 npm install
 
 info "Compiling web frontend (production build)..."
+export NODE_OPTIONS="--max-old-space-size=1536"
 npm run build --workspace=apps/web
 success "Web frontend compiled to ${APP_DIR}/apps/web/dist."
 
@@ -106,7 +107,24 @@ EOF
 systemctl daemon-reload
 systemctl enable wledashboard.service
 systemctl restart wledashboard.service
-success "WLEDashboard systemd service enabled and started."
+
+# Verify service is active
+info "Verifying WLEDashboard service status..."
+SERVICE_ACTIVE=false
+for i in {1..15}; do
+  if systemctl is-active --quiet wledashboard.service; then
+    SERVICE_ACTIVE=true
+    break
+  fi
+  sleep 1
+done
+
+if [ "$SERVICE_ACTIVE" = false ]; then
+  error "WLEDashboard service failed to start. Logs:"
+  journalctl -u wledashboard.service -n 30 --no-pager
+  exit 1
+fi
+success "WLEDashboard systemd service is active and running."
 
 # 6. Create in-container update script
 cat << 'EOF' > /opt/wledashboard/update.sh
@@ -118,6 +136,7 @@ cd /opt/wledashboard
 git fetch --all --tags
 git pull origin master
 npm install
+export NODE_OPTIONS="--max-old-space-size=1536"
 npm run build --workspace=apps/web
 systemctl start wledashboard
 echo "[OK] WLEDashboard updated successfully."

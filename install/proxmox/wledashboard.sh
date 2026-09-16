@@ -57,8 +57,8 @@ fi
 CTID="$NEXT_CTID"
 HOSTNAME="wledashboard"
 CORES="1"
-RAM="1024"
-SWAP="512"
+RAM="2048"
+SWAP="1024"
 DISK_SIZE="4"
 BRIDGE="vmbr0"
 VLAN=""
@@ -94,13 +94,13 @@ MODE="default"
 if [ "$USE_WHIPTAIL" = true ]; then
   if whiptail --backtitle "Proxmox VE Helper Scripts" --title "SETTINGS TYPE" \
     --yes-button "Default" --no-button "Advanced" \
-    --yesno "Select configuration mode:\n\nDefault: ID ${CTID}, 1 Core, 1024MB RAM, 4GB Disk, Hostname '${HOSTNAME}'\nAdvanced: Customize Container ID, Hostname, CPU, RAM, Disk, Storage, Network" 13 70; then
+    --yesno "Select configuration mode:\n\nDefault: ID ${CTID}, 1 Core, 2048MB RAM, 4GB Disk, Hostname '${HOSTNAME}'\nAdvanced: Customize Container ID, Hostname, CPU, RAM, Disk, Storage, Network" 13 70; then
     MODE="default"
   else
     MODE="advanced"
   fi
 else
-  read -r -p "Use Default Settings? (ID: $CTID, Name: $HOSTNAME, 1 Core, 1GB RAM, 4GB Disk) [Y/n] " MODE_PROMPT
+  read -r -p "Use Default Settings? (ID: $CTID, Name: $HOSTNAME, 1 Core, 2GB RAM, 4GB Disk) [Y/n] " MODE_PROMPT
   MODE_PROMPT=${MODE_PROMPT:-Y}
   if [[ ! "$MODE_PROMPT" =~ ^[Yy]$ ]]; then
     MODE="advanced"
@@ -356,6 +356,22 @@ rm -f /tmp/wledashboard-install.sh
 info "Executing WLEDashboard setup script inside container..."
 pct exec "$CTID" -- bash /tmp/wledashboard-install.sh
 pct exec "$CTID" -- rm -f /tmp/wledashboard-install.sh
+
+# Verify HTTP endpoint is responding
+info "Verifying WLEDashboard HTTP server on port 8301..."
+HTTP_OK=false
+for i in {1..20}; do
+  if pct exec "$CTID" -- curl -fs -o /dev/null "http://127.0.0.1:8301/api/health" 2>/dev/null; then
+    HTTP_OK=true
+    break
+  fi
+  sleep 1
+done
+
+if [ "$HTTP_OK" = false ]; then
+  warn "Service is active but HTTP health endpoint on port 8301 has not responded yet. Status:"
+  pct exec "$CTID" -- systemctl status wledashboard.service --no-pager || true
+fi
 
 echo ""
 echo -e "${GN}======================================================${CL}"

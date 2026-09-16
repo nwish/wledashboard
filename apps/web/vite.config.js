@@ -28,6 +28,7 @@ export default defineConfig({
           vendor: ['react', 'react-dom', 'react-router-dom'],
           query: ['@tanstack/react-query'],
           dnd: ['@dnd-kit/core', '@dnd-kit/sortable', '@dnd-kit/utilities'],
+          spatial: ['three', '@react-three/fiber', '@react-three/drei'],
         },
       },
     },
