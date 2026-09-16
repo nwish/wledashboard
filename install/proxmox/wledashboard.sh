@@ -50,29 +50,28 @@ echo -e "${BL}          WLEDashboard Proxmox VE Installer           ${CL}"
 echo -e "${BL}======================================================${CL}"
 
 # Determine initial defaults
-NEXT_CTID=$(pvesh get /cluster/nextid)
+NEXT_CTID=$(pvesh get /cluster/nextid 2>/dev/null | tr -dc '0-9' || true)
+if [ -z "$NEXT_CTID" ]; then
+  NEXT_CTID="100"
+fi
 CTID="$NEXT_CTID"
 HOSTNAME="wledashboard"
 CORES="1"
 RAM="1024"
 SWAP="512"
-DISK_SIZE="4G"
+DISK_SIZE="4"
 BRIDGE="vmbr0"
 VLAN=""
 IP_INPUT="dhcp"
 GATEWAY=""
 
 # Find default storage for containers
-STORAGE=$(pvesm status -content rootdir | awk 'NR>1 {print $1; exit}')
-if [ -z "$STORAGE" ]; then
-  STORAGE="local-lvm"
-fi
+STORAGE=$(pvesm status -content rootdir | awk 'NR>1 {print $1; exit}' || true)
+STORAGE=$(echo "${STORAGE:-local-lvm}" | xargs)
 
 # Find template storage
-TMPL_STORAGE=$(pvesm status -content vztmpl | awk 'NR>1 {print $1; exit}')
-if [ -z "$TMPL_STORAGE" ]; then
-  TMPL_STORAGE="local"
-fi
+TMPL_STORAGE=$(pvesm status -content vztmpl | awk 'NR>1 {print $1; exit}' || true)
+TMPL_STORAGE=$(echo "${TMPL_STORAGE:-local}" | xargs)
 
 # 1. Initial Prompt: Proceed?
 if [ "$USE_WHIPTAIL" = true ]; then
@@ -115,7 +114,8 @@ if [ "$MODE" = "advanced" ]; then
     while true; do
       CTID=$(whiptail --backtitle "Proxmox VE Helper Scripts" --title "CONTAINER ID" \
         --inputbox "Set Container ID:" 8 58 "$CTID" 3>&1 1>&2 2>&3) || { info "Installation cancelled."; exit 0; }
-      if [[ ! "$CTID" =~ ^[0-9]+$ ]]; then
+      CTID=$(echo "$CTID" | tr -dc '0-9')
+      if [ -z "$CTID" ]; then
         whiptail --backtitle "Proxmox VE Helper Scripts" --title "ERROR" --msgbox "Container ID must be numeric." 8 58
       elif pct status "$CTID" >/dev/null 2>&1 || qm status "$CTID" >/dev/null 2>&1; then
         whiptail --backtitle "Proxmox VE Helper Scripts" --title "ERROR" --msgbox "ID $CTID is already in use by another CT or VM. Please choose a different ID." 8 58
@@ -127,31 +127,36 @@ if [ "$MODE" = "advanced" ]; then
     # Hostname
     HOSTNAME=$(whiptail --backtitle "Proxmox VE Helper Scripts" --title "HOSTNAME" \
       --inputbox "Set Container Hostname:" 8 58 "$HOSTNAME" 3>&1 1>&2 2>&3) || { info "Installation cancelled."; exit 0; }
-    HOSTNAME=${HOSTNAME:-wledashboard}
+    HOSTNAME=$(echo "${HOSTNAME:-wledashboard}" | tr -dc 'a-zA-Z0-9.-')
 
     # CPU Cores
     CORES=$(whiptail --backtitle "Proxmox VE Helper Scripts" --title "CPU CORES" \
       --inputbox "Allocate CPU Cores:" 8 58 "$CORES" 3>&1 1>&2 2>&3) || { info "Installation cancelled."; exit 0; }
+    CORES=$(echo "$CORES" | tr -dc '0-9')
     CORES=${CORES:-1}
 
     # RAM
     RAM=$(whiptail --backtitle "Proxmox VE Helper Scripts" --title "RAM ALLOCATION (MB)" \
       --inputbox "Allocate RAM in Megabytes:" 8 58 "$RAM" 3>&1 1>&2 2>&3) || { info "Installation cancelled."; exit 0; }
+    RAM=$(echo "$RAM" | tr -dc '0-9')
     RAM=${RAM:-1024}
 
     # Swap
     SWAP=$(whiptail --backtitle "Proxmox VE Helper Scripts" --title "SWAP ALLOCATION (MB)" \
       --inputbox "Allocate Swap in Megabytes:" 8 58 "$SWAP" 3>&1 1>&2 2>&3) || { info "Installation cancelled."; exit 0; }
+    SWAP=$(echo "$SWAP" | tr -dc '0-9')
     SWAP=${SWAP:-512}
 
-    # Disk Size
+    # Disk Size (in GB)
     DISK_SIZE=$(whiptail --backtitle "Proxmox VE Helper Scripts" --title "DISK SIZE" \
-      --inputbox "Set Disk Size (e.g. 4G, 8G):" 8 58 "$DISK_SIZE" 3>&1 1>&2 2>&3) || { info "Installation cancelled."; exit 0; }
-    DISK_SIZE=${DISK_SIZE:-4G}
+      --inputbox "Set Disk Size in GB (integer, e.g. 4 or 8):" 8 58 "$DISK_SIZE" 3>&1 1>&2 2>&3) || { info "Installation cancelled."; exit 0; }
+    DISK_SIZE=$(echo "$DISK_SIZE" | tr -dc '0-9')
+    DISK_SIZE=${DISK_SIZE:-4}
 
     # Storage Pool
     STORAGE=$(whiptail --backtitle "Proxmox VE Helper Scripts" --title "ROOT STORAGE" \
       --inputbox "Set Root Disk Storage Pool:" 8 58 "$STORAGE" 3>&1 1>&2 2>&3) || { info "Installation cancelled."; exit 0; }
+    STORAGE=$(echo "$STORAGE" | xargs)
 
     # Bridge
     BRIDGE=$(whiptail --backtitle "Proxmox VE Helper Scripts" --title "NETWORK BRIDGE" \
@@ -161,6 +166,7 @@ if [ "$MODE" = "advanced" ]; then
     # VLAN Tag
     VLAN=$(whiptail --backtitle "Proxmox VE Helper Scripts" --title "VLAN TAG" \
       --inputbox "Set VLAN Tag (leave empty for untagged):" 8 58 "$VLAN" 3>&1 1>&2 2>&3) || { info "Installation cancelled."; exit 0; }
+    VLAN=$(echo "$VLAN" | tr -dc '0-9')
 
     # IP Address
     IP_INPUT=$(whiptail --backtitle "Proxmox VE Helper Scripts" --title "IP ADDRESS" \
@@ -175,8 +181,9 @@ if [ "$MODE" = "advanced" ]; then
     # Terminal text fallback prompts
     while true; do
       read -r -p "Container ID [$CTID]: " INPUT_CTID
+      INPUT_CTID=$(echo "$INPUT_CTID" | tr -dc '0-9')
       CTID=${INPUT_CTID:-$CTID}
-      if [[ ! "$CTID" =~ ^[0-9]+$ ]]; then
+      if [ -z "$CTID" ]; then
         error "Container ID must be numeric."
       elif pct status "$CTID" >/dev/null 2>&1 || qm status "$CTID" >/dev/null 2>&1; then
         error "ID $CTID is already in use by another CT or VM. Please choose a different ID."
@@ -186,27 +193,34 @@ if [ "$MODE" = "advanced" ]; then
     done
 
     read -r -p "Hostname [$HOSTNAME]: " INPUT_HOSTNAME
+    INPUT_HOSTNAME=$(echo "$INPUT_HOSTNAME" | tr -dc 'a-zA-Z0-9.-')
     HOSTNAME=${INPUT_HOSTNAME:-$HOSTNAME}
 
     read -r -p "CPU Cores [$CORES]: " INPUT_CORES
+    INPUT_CORES=$(echo "$INPUT_CORES" | tr -dc '0-9')
     CORES=${INPUT_CORES:-$CORES}
 
     read -r -p "RAM (MB) [$RAM]: " INPUT_RAM
+    INPUT_RAM=$(echo "$INPUT_RAM" | tr -dc '0-9')
     RAM=${INPUT_RAM:-$RAM}
 
     read -r -p "Swap (MB) [$SWAP]: " INPUT_SWAP
+    INPUT_SWAP=$(echo "$INPUT_SWAP" | tr -dc '0-9')
     SWAP=${INPUT_SWAP:-$SWAP}
 
-    read -r -p "Disk Size [$DISK_SIZE]: " INPUT_DISK
+    read -r -p "Disk Size in GB [$DISK_SIZE]: " INPUT_DISK
+    INPUT_DISK=$(echo "$INPUT_DISK" | tr -dc '0-9')
     DISK_SIZE=${INPUT_DISK:-$DISK_SIZE}
 
     read -r -p "Storage Pool [$STORAGE]: " INPUT_STORAGE
     STORAGE=${INPUT_STORAGE:-$STORAGE}
+    STORAGE=$(echo "$STORAGE" | xargs)
 
     read -r -p "Network Bridge [$BRIDGE]: " INPUT_BRIDGE
     BRIDGE=${INPUT_BRIDGE:-$BRIDGE}
 
     read -r -p "VLAN Tag (empty for none) [$VLAN]: " INPUT_VLAN
+    INPUT_VLAN=$(echo "$INPUT_VLAN" | tr -dc '0-9')
     VLAN=${INPUT_VLAN:-$VLAN}
 
     read -r -p "IP Address ('dhcp' or CIDR) [$IP_INPUT]: " INPUT_IP
@@ -218,6 +232,10 @@ if [ "$MODE" = "advanced" ]; then
     fi
   fi
 fi
+
+# Ensure disk size is strictly an integer in GB without any 'G' suffix
+DISK_SIZE_GB=$(echo "$DISK_SIZE" | tr -dc '0-9')
+DISK_SIZE_GB=${DISK_SIZE_GB:-4}
 
 # Build network configuration string
 NET0="name=eth0,bridge=${BRIDGE}"
@@ -245,14 +263,14 @@ echo -e "  Hostname:      ${GN}${HOSTNAME}${CL}"
 echo -e "  Cores:         ${GN}${CORES}${CL}"
 echo -e "  RAM:           ${GN}${RAM} MB${CL}"
 echo -e "  Swap:          ${GN}${SWAP} MB${CL}"
-echo -e "  Disk Size:     ${GN}${DISK_SIZE}${CL}"
+echo -e "  Disk Size:     ${GN}${DISK_SIZE_GB} GB${CL}"
 echo -e "  Root Storage:  ${GN}${STORAGE}${CL}"
 echo -e "  Network:       ${GN}${NET_DESC}${CL}"
 
 if [ "$MODE" = "advanced" ]; then
   if [ "$USE_WHIPTAIL" = true ]; then
     whiptail --backtitle "Proxmox VE Helper Scripts" --title "CONFIRM CREATION" \
-      --yesno "Ready to create container with the selected configuration?\n\nContainer ID: $CTID\nHostname: $HOSTNAME\nCores: $CORES | RAM: ${RAM}MB | Disk: $DISK_SIZE\nStorage: $STORAGE\nNetwork: $NET_DESC" 14 62 || {
+      --yesno "Ready to create container with the selected configuration?\n\nContainer ID: $CTID\nHostname: $HOSTNAME\nCores: $CORES | RAM: ${RAM}MB | Disk: ${DISK_SIZE_GB}GB\nStorage: $STORAGE\nNetwork: $NET_DESC" 14 62 || {
       info "Installation cancelled by user."
       exit 0
     }
@@ -289,11 +307,12 @@ TMPL_PATH="${TMPL_STORAGE}:vztmpl/${DEBIAN_TMPL}"
 # Create unprivileged LXC container
 info "Creating LXC container $CTID..."
 pct create "$CTID" "$TMPL_PATH" \
+  --ostype debian \
   --hostname "$HOSTNAME" \
   --cores "$CORES" \
   --memory "$RAM" \
   --swap "$SWAP" \
-  --rootfs "${STORAGE}:${DISK_SIZE}" \
+  --rootfs "${STORAGE}:${DISK_SIZE_GB}" \
   --net0 "$NET0" \
   --unprivileged 1 \
   --features nesting=1 \
