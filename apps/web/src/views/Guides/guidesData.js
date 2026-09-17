@@ -665,12 +665,14 @@ export const GUIDES = [
           "Native Performance: Uses between 45MB and 90MB of RAM, running directly on the Linux host kernel without virtualization overhead.",
           "Identical Execution: Compiles and runs the exact same Node.js 22 LTS environment, Fastify server, and Vite production bundle as the Docker container.",
           "Native LAN Subnet: Bridges directly to vmbr0 with its own IP address, allowing seamless WLED sync and broadcast discovery across your local network.",
+          "Host Shell Access: Log directly into the container from your Proxmox host shell with 'pct enter <CTID>' (type 'exit' to return to host). You can also run ad-hoc commands via 'pct exec <CTID> -- <command>'.",
+          "Serial Console: Connect to the virtual console using 'pct console <CTID>' (detach using Ctrl+O).",
           "Simple Updates: Update your container at any time by running 'pct exec <CTID> -- update-wledashboard' from the Proxmox host shell."
         ],
         callout: {
           type: "tip",
-          title: "Proxmox Storage",
-          text: "The installer automatically selects your default container storage (such as local-lvm) and assigns a lean 4GB virtual disk with 1024MB RAM and 1 CPU core.",
+          title: "Proxmox Hardware Allocation",
+          text: "The installer automatically detects your default container storage (such as local-lvm) and provisions a 4GB virtual disk with 2048MB RAM and 1024MB Swap to provide headroom for the Vite frontend compilation step. During normal operation, the container consumes under 90MB of RAM.",
         },
       },
       {
@@ -694,7 +696,8 @@ export const GUIDES = [
           "Data Volume Persistence: All application data and SQLite databases reside in the wledashboard_data Docker volume mounted to /app/data. Tearing down or upgrading the container never deletes your data.",
           "Bookmark Preservation on Port 3001: If you previously deployed WLEDashboard before v0.21.0 and have browser bookmarks or home dashboard links pointing to port 3001, you can keep them intact by updating your compose file ports section to '3001:8301'.",
           "Automated Background Updates with Watchtower (Opt-In): If you use Watchtower to manage container updates automatically across your homelab, uncomment the labels section in docker-compose.yml containing com.centurylinklabs.watchtower.enable=true.",
-          "In-App Update Indicator: The Settings page in WLEDashboard automatically queries GitHub Releases for updates. When a newer version is released, an update banner displays with a one-click Copy Command button."
+          "In-App Update Indicator: The Settings page in WLEDashboard automatically queries GitHub Releases for updates. When a newer version is released, an update banner displays with one-click Copy Command buttons for both Docker Compose and Proxmox VE.",
+          "Proxmox VE LXC Updates: If running in a Proxmox VE LXC container, execute 'pct exec <CTID> -- update-wledashboard' from the Proxmox host shell, or execute 'update-wledashboard' directly inside the container console to pull the latest release, recompile, and restart systemd with zero data loss."
         ],
         callout: {
           type: "tip",

@@ -17,8 +17,10 @@ const CreateGroupSchema = z.object({
   name: z.string().min(1).max(64).trim(),
   type: GroupTypeSchema.optional().default('custom'),
   color: z.string().regex(/^#[0-9a-fA-F]{6}$/).optional().default('#8b5cf6'),
-  device_ids: z.array(z.string().uuid()).optional().default([]),
-  child_group_ids: z.array(z.string().uuid()).optional().default([]),
+  spotify_sync_enabled: z.union([z.number().int().min(0).max(1), z.boolean().transform(v => v ? 1 : 0)]).optional().default(0),
+  weather_sync_enabled: z.union([z.number().int().min(0).max(1), z.boolean().transform(v => v ? 1 : 0)]).optional().default(0),
+  device_ids: z.array(z.string()).optional().default([]),
+  child_group_ids: z.array(z.string()).optional().default([]),
 })
 
 const UpdateGroupSchema = z.object({
@@ -26,12 +28,14 @@ const UpdateGroupSchema = z.object({
   type: GroupTypeSchema.optional(),
   color: z.string().regex(/^#[0-9a-fA-F]{6}$/).optional(),
   sort_order: z.number().int().min(0).optional(),
-  device_ids: z.array(z.string().uuid()).optional(),
-  child_group_ids: z.array(z.string().uuid()).optional(),
+  spotify_sync_enabled: z.union([z.number().int().min(0).max(1), z.boolean().transform(v => v ? 1 : 0)]).optional(),
+  weather_sync_enabled: z.union([z.number().int().min(0).max(1), z.boolean().transform(v => v ? 1 : 0)]).optional(),
+  device_ids: z.array(z.string()).optional(),
+  child_group_ids: z.array(z.string()).optional(),
 })
 
 const ReorderGroupsSchema = z.object({
-  ids: z.array(z.string().uuid()),
+  ids: z.array(z.string()),
 })
 
 const CommandSchema = z.record(z.unknown())

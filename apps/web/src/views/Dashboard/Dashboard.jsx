@@ -635,8 +635,8 @@ function RoomsView({ devices, deviceRoomMap }) {
 
 function MediaView({ devices }) {
   const mediaDevs = devices.filter(d => 
-    d.spotify_sync_enabled === 1 || 
-    d.weather_sync_enabled === 1 ||
+    Boolean(d.spotify_sync_enabled) || 
+    Boolean(d.weather_sync_enabled) ||
     d.liveState?.info?.name?.toLowerCase().includes('wled-sr') ||
     d.liveState?.info?.audio
   )

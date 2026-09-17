@@ -73,6 +73,7 @@ export function Settings() {
     : ''
   const [copiedApiToken, setCopiedApiToken]     = useState(false)
   const [copiedUpdateCmd, setCopiedUpdateCmd]   = useState(false)
+  const [updatePlatform, setUpdatePlatform]     = useState('docker')
   const [showApiToken, setShowApiToken]         = useState(false)
   const [weatherData, setWeatherData] = useState(null)
   const [weatherSyncing, setWeatherSyncing] = useState(false)
@@ -284,7 +285,9 @@ export function Settings() {
   }, [performSave, addToast])
 
   const handleCopyUpdateCmd = useCallback(async () => {
-    const cmd = 'docker compose pull && docker compose up -d'
+    const cmd = updatePlatform === 'proxmox'
+      ? 'pct exec <CTID> -- update-wledashboard'
+      : 'docker compose pull && docker compose up -d'
     const ok = await copyToClipboard(cmd)
     if (ok) {
       setCopiedUpdateCmd(true)
@@ -293,7 +296,7 @@ export function Settings() {
     } else {
       addToast({ message: 'Failed to copy update command', type: 'error' })
     }
-  }, [addToast])
+  }, [updatePlatform, addToast])
 
   // ── Backup Export ────────────────────────────────────────────────────────────
   const handleBackupExport = useCallback(async () => {
@@ -418,45 +421,112 @@ export function Settings() {
         <div className={styles.updateBanner}>
           <div className={styles.updateBannerText}>
             <h3>Update Available: v{updateAvailable}</h3>
-            <p>A new version of WLEDashboard is available! You can update your Docker container seamlessly without losing any data or configuration.</p>
+            <p>A new version of WLEDashboard is available! You can update seamlessly without losing any data or configuration.</p>
           </div>
           <div className={styles.updateInstructions}>
-            <p className={styles.updateInstructionsHeader}>Run the following command in your terminal:</p>
-            <div className={styles.updateCodeRow}>
-              <code className={styles.updateCodeBlock}>docker compose pull &amp;&amp; docker compose up -d</code>
-              <button
-                type="button"
-                className={[styles.copyUpdateBtn, copiedUpdateCmd && styles.copyUpdateBtnCopied].filter(Boolean).join(' ')}
-                onClick={handleCopyUpdateCmd}
-                title="Copy update command to clipboard"
-                aria-label="Copy update command to clipboard"
-              >
-                {copiedUpdateCmd ? (
-                  <>
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-                      <polyline points="20 6 9 17 4 12" />
-                    </svg>
-                    <span>Copied</span>
-                  </>
-                ) : (
-                  <>
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-                      <rect x="9" y="9" width="13" height="13" rx="2" ry="2" />
-                      <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
-                    </svg>
-                    <span>Copy Command</span>
-                  </>
-                )}
-              </button>
+            <div className={styles.updatePlatformHeader}>
+              <p className={styles.updateInstructionsHeader}>Select your deployment platform:</p>
+              <div className={styles.platformToggleGroup} role="tablist" aria-label="Deployment platform">
+                <button
+                  type="button"
+                  role="tab"
+                  aria-selected={updatePlatform === 'docker'}
+                  className={[styles.platformToggleBtn, updatePlatform === 'docker' && styles.platformToggleActive].filter(Boolean).join(' ')}
+                  onClick={() => setUpdatePlatform('docker')}
+                >
+                  Docker Compose
+                </button>
+                <button
+                  type="button"
+                  role="tab"
+                  aria-selected={updatePlatform === 'proxmox'}
+                  className={[styles.platformToggleBtn, updatePlatform === 'proxmox' && styles.platformToggleActive].filter(Boolean).join(' ')}
+                  onClick={() => setUpdatePlatform('proxmox')}
+                >
+                  Proxmox VE (LXC)
+                </button>
+              </div>
             </div>
-            <div className={styles.updateTipsRow}>
-              <span className={styles.updateTip}>
-                <strong>Port 3001 Bookmarks:</strong> If upgrading from versions prior to v0.21.0, map <code>3001:8301</code> under ports in your docker-compose.yml to preserve bookmarks.
-              </span>
-              <span className={styles.updateTip}>
-                <strong>Watchtower:</strong> Automated background updates can be enabled by uncommenting the <code>com.centurylinklabs.watchtower.enable=true</code> label in your docker-compose.yml.
-              </span>
-            </div>
+
+            {updatePlatform === 'docker' ? (
+              <>
+                <p className={styles.updateInstructionsHeader}>Run the following command in your terminal where docker-compose.yml resides:</p>
+                <div className={styles.updateCodeRow}>
+                  <code className={styles.updateCodeBlock}>docker compose pull &amp;&amp; docker compose up -d</code>
+                  <button
+                    type="button"
+                    className={[styles.copyUpdateBtn, copiedUpdateCmd && styles.copyUpdateBtnCopied].filter(Boolean).join(' ')}
+                    onClick={handleCopyUpdateCmd}
+                    title="Copy update command to clipboard"
+                    aria-label="Copy update command to clipboard"
+                  >
+                    {copiedUpdateCmd ? (
+                      <>
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                          <polyline points="20 6 9 17 4 12" />
+                        </svg>
+                        <span>Copied</span>
+                      </>
+                    ) : (
+                      <>
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                          <rect x="9" y="9" width="13" height="13" rx="2" ry="2" />
+                          <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
+                        </svg>
+                        <span>Copy Command</span>
+                      </>
+                    )}
+                  </button>
+                </div>
+                <div className={styles.updateTipsRow}>
+                  <span className={styles.updateTip}>
+                    <strong>Port 3001 Bookmarks:</strong> If upgrading from versions prior to v0.21.0, map <code>3001:8301</code> under ports in your docker-compose.yml to preserve bookmarks.
+                  </span>
+                  <span className={styles.updateTip}>
+                    <strong>Watchtower:</strong> Automated background updates can be enabled by uncommenting the <code>com.centurylinklabs.watchtower.enable=true</code> label in your docker-compose.yml.
+                  </span>
+                </div>
+              </>
+            ) : (
+              <>
+                <p className={styles.updateInstructionsHeader}>From your Proxmox host shell (replace &lt;CTID&gt; with your container ID):</p>
+                <div className={styles.updateCodeRow}>
+                  <code className={styles.updateCodeBlock}>pct exec &lt;CTID&gt; -- update-wledashboard</code>
+                  <button
+                    type="button"
+                    className={[styles.copyUpdateBtn, copiedUpdateCmd && styles.copyUpdateBtnCopied].filter(Boolean).join(' ')}
+                    onClick={handleCopyUpdateCmd}
+                    title="Copy update command to clipboard"
+                    aria-label="Copy update command to clipboard"
+                  >
+                    {copiedUpdateCmd ? (
+                      <>
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                          <polyline points="20 6 9 17 4 12" />
+                        </svg>
+                        <span>Copied</span>
+                      </>
+                    ) : (
+                      <>
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                          <rect x="9" y="9" width="13" height="13" rx="2" ry="2" />
+                          <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
+                        </svg>
+                        <span>Copy Command</span>
+                      </>
+                    )}
+                  </button>
+                </div>
+                <div className={styles.updateTipsRow}>
+                  <span className={styles.updateTip}>
+                    <strong>Inside Container Shell:</strong> If logged into the container console via <code>pct enter &lt;CTID&gt;</code>, you can run <code>update-wledashboard</code> directly.
+                  </span>
+                  <span className={styles.updateTip}>
+                    <strong>Data Persistence:</strong> All SQLite database tables and configuration files in <code>/opt/wledashboard/data</code> are fully preserved during upgrades.
+                  </span>
+                </div>
+              </>
+            )}
           </div>
         </div>
       )}
@@ -1446,7 +1516,7 @@ export function Settings() {
               <h3 className={styles.specialThanksTitle}>Community & Special Thanks</h3>
             </div>
             <p className={styles.specialThanksDesc}>
-              Special thanks to community members whose bug reports, feature requests, and feedback help shape WLEDashboard. (Hover to pause)
+              Special thanks to community members whose feature requests, feedback, and bug reports help shape WLEDashboard. (Hover to pause)
             </p>
             <div className={styles.thanksMarqueeContainer}>
               <div className={styles.thanksMarqueeTrack}>

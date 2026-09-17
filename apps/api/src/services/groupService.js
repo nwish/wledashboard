@@ -1,7 +1,7 @@
 import { v4 as uuidv4 } from 'uuid'
 import { getDb } from '../db/database.js'
 import { sendDeviceCommand, listDevices } from './deviceService.js'
-import { isDemoMode, getDemoGroups } from './demoData.js'
+import { isDemoMode, getDemoGroups, updateDemoGroup, deleteDemoGroup, createDemoGroup } from './demoData.js'
 
 // ─── Group CRUD ──────────────────────────────────────────────────────────────
 
@@ -42,18 +42,32 @@ export function getGroup(id) {
   return { ...group, device_ids, child_group_ids }
 }
 
-export function createGroup({ name, type = 'custom', color = '#8b5cf6', device_ids = [], child_group_ids = [] }) {
+export function createGroup(fields) {
+  if (isDemoMode()) {
+    return createDemoGroup(fields)
+  }
+  const {
+    name,
+    type = 'custom',
+    color = '#8b5cf6',
+    sort_order: customOrder,
+    spotify_sync_enabled = 0,
+    weather_sync_enabled = 0,
+    device_ids = [],
+    child_group_ids = [],
+  } = fields
+
   const db = getDb()
   const id = uuidv4()
 
   const maxOrder = db.prepare('SELECT MAX(sort_order) AS max FROM groups').get()?.max ?? -1
-  const sort_order = maxOrder + 1
+  const sort_order = customOrder ?? (maxOrder + 1)
 
   db.transaction(() => {
     db.prepare(`
-      INSERT INTO groups (id, name, type, color, sort_order)
-      VALUES (?, ?, ?, ?, ?)
-    `).run(id, name, type, color, sort_order)
+      INSERT INTO groups (id, name, type, color, sort_order, spotify_sync_enabled, weather_sync_enabled)
+      VALUES (?, ?, ?, ?, ?, ?, ?)
+    `).run(id, name, type, color, sort_order, spotify_sync_enabled, weather_sync_enabled)
 
     const addMember = db.prepare('INSERT INTO group_members (group_id, device_id) VALUES (?, ?)')
     for (const devId of device_ids) {
@@ -71,31 +85,23 @@ export function createGroup({ name, type = 'custom', color = '#8b5cf6', device_i
   return getGroup(id)
 }
 
-export function updateGroup(id, { name, type, color, sort_order, spotify_sync_enabled, weather_sync_enabled, device_ids, child_group_ids }) {
+export function updateGroup(id, fields) {
+  if (isDemoMode() || id.startsWith('demo-')) {
+    return updateDemoGroup(id, fields)
+  }
   const db = getDb()
   const existing = getGroup(id)
   if (!existing) return null
 
+  const { device_ids, child_group_ids } = fields
+
   db.transaction(() => {
-    if (name !== undefined || type !== undefined || color !== undefined || sort_order !== undefined || spotify_sync_enabled !== undefined || weather_sync_enabled !== undefined) {
-      db.prepare(`
-        UPDATE groups SET
-          name       = COALESCE(?, name),
-          type       = COALESCE(?, type),
-          color      = COALESCE(?, color),
-          sort_order = COALESCE(?, sort_order),
-          spotify_sync_enabled = COALESCE(?, spotify_sync_enabled),
-          weather_sync_enabled = COALESCE(?, weather_sync_enabled)
-        WHERE id = ?
-      `).run(
-        name ?? null,
-        type ?? null,
-        color ?? null,
-        sort_order ?? null,
-        spotify_sync_enabled ?? null,
-        weather_sync_enabled ?? null,
-        id
-      )
+    const allowed = ['name', 'type', 'color', 'sort_order', 'spotify_sync_enabled', 'weather_sync_enabled']
+    const updateKeys = Object.keys(fields).filter(k => allowed.includes(k) && fields[k] !== undefined)
+    if (updateKeys.length > 0) {
+      const sets = updateKeys.map(k => `${k} = ?`)
+      const values = updateKeys.map(k => fields[k])
+      db.prepare(`UPDATE groups SET ${sets.join(', ')} WHERE id = ?`).run(...values, id)
     }
 
     if (Array.isArray(device_ids)) {
@@ -121,6 +127,9 @@ export function updateGroup(id, { name, type, color, sort_order, spotify_sync_en
 }
 
 export function deleteGroup(id) {
+  if (isDemoMode() || id.startsWith('demo-')) {
+    return deleteDemoGroup(id)
+  }
   const db = getDb()
   return db.prepare('DELETE FROM groups WHERE id = ?').run(id).changes > 0
 }

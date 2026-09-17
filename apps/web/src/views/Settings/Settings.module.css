@@ -428,6 +428,49 @@
   font-weight: 500;
 }
 
+.updatePlatformHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: var(--sp-2);
+  margin-bottom: var(--sp-1);
+}
+
+.platformToggleGroup {
+  display: flex;
+  gap: var(--sp-1);
+  background-color: var(--surface-base);
+  padding: 3px;
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-m);
+}
+
+.platformToggleBtn {
+  height: 28px;
+  padding: 0 var(--sp-3);
+  background: none;
+  border: none;
+  border-radius: calc(var(--radius-m) - 2px);
+  font: var(--type-small);
+  font-size: 0.8rem;
+  font-weight: 500;
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: color 120ms, background-color 120ms;
+}
+
+.platformToggleBtn:hover {
+  color: var(--text-primary);
+}
+
+.platformToggleActive {
+  background-color: var(--surface-raised);
+  color: var(--accent-amber);
+  font-weight: 600;
+  box-shadow: var(--shadow-1);
+}
+
 .updateCodeRow {
   display: flex;
   align-items: center;

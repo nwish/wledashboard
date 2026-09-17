@@ -177,8 +177,10 @@ Deploy WLEDashboard as an unprivileged Debian 12 LXC container on Proxmox VE wit
 bash -c "$(curl -fsSL https://raw.githubusercontent.com/upioneer/WLEDashboard/master/install/proxmox/wledashboard.sh)"
 ```
 
-* Turnkey Execution: Provisions an LXC container with 1 CPU core, 2048MB RAM, 1024MB Swap, and 4GB disk storage.
+* Turnkey Execution: Provisions an LXC container with 1 CPU core, 2048MB RAM, and 1024MB Swap for build headroom (runtime consumption is only ~45MB to 90MB).
 * Native Service: Runs as a managed `systemd` service (`wledashboard.service`) listening on port 8301 with auto-restart on boot.
+* Direct Host Shell Access: Drop into the container root shell from your Proxmox host via `pct enter <CTID>` (or connect to serial console via `pct console <CTID>`).
+* Ad-Hoc Host Commands: Execute commands directly without entering the container using `pct exec <CTID> -- <command>`.
 * One-Command Container Updates: To update the LXC installation in the future, run `pct exec <CTID> -- update-wledashboard` from the Proxmox host shell.
 
 ---

@@ -213,15 +213,21 @@ export function GroupCard({ group, onEdit }) {
             }}
             onClick={async () => {
               if (!isOnline) return
+              const nextSync = group.spotify_sync_enabled ? 0 : 1
               try {
-                await useGroupStore.getState().updateGroup(group.id, { spotify_sync_enabled: group.spotify_sync_enabled ? 0 : 1 })
-                addToast({ message: `Spotify Sync ${group.spotify_sync_enabled ? 'Disabled' : 'Enabled'}`, type: 'success' })
+                await useGroupStore.getState().updateGroup(group.id, { spotify_sync_enabled: nextSync })
+                addToast({ message: `Spotify Sync ${nextSync ? 'Enabled' : 'Disabled'}`, type: 'success' })
               } catch (err) {
                 addToast({ message: 'Failed to update Spotify sync', type: 'error' })
               }
             }}
             title={isOnline ? "Toggle Spotify Media Sync" : "Group unreachable"}
           >
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+              <path d="M9 18V5l12-2v13" />
+              <circle cx="6" cy="18" r="3" />
+              <circle cx="18" cy="16" r="3" />
+            </svg>
             Sync {group.spotify_sync_enabled ? 'On' : 'Off'}
           </button>
           
@@ -245,9 +251,10 @@ export function GroupCard({ group, onEdit }) {
             }}
             onClick={async () => {
               if (!isOnline) return
+              const nextWeather = group.weather_sync_enabled ? 0 : 1
               try {
-                await useGroupStore.getState().updateGroup(group.id, { weather_sync_enabled: group.weather_sync_enabled ? 0 : 1 })
-                addToast({ message: `Weather Sync ${group.weather_sync_enabled ? 'Disabled' : 'Enabled'}`, type: 'success' })
+                await useGroupStore.getState().updateGroup(group.id, { weather_sync_enabled: nextWeather })
+                addToast({ message: `Weather Sync ${nextWeather ? 'Enabled' : 'Disabled'}`, type: 'success' })
               } catch (err) {
                 addToast({ message: 'Failed to update Weather sync', type: 'error' })
               }

@@ -613,3 +613,57 @@ export function updateDemoDevice(id, fields) {
 export function simulateDemoFirmwareUpdate(id, version = '0.15.0') {
   return updateDemoDevice(id, { firmware_ver: version })
 }
+
+/**
+ * Update virtual demo group properties in memory.
+ */
+export function updateDemoGroup(id, fields) {
+  const grp = DEMO_GROUPS.find(g => g.id === id)
+  if (!grp) return null
+  const { device_ids, child_group_ids, ...rest } = fields
+  for (const [k, v] of Object.entries(rest)) {
+    if (v !== undefined) {
+      grp[k] = v
+    }
+  }
+  if (Array.isArray(device_ids)) {
+    grp.device_ids = device_ids
+  }
+  if (Array.isArray(child_group_ids)) {
+    grp.child_group_ids = child_group_ids
+  }
+  return grp
+}
+
+/**
+ * Delete virtual demo group from memory.
+ */
+export function deleteDemoGroup(id) {
+  const idx = DEMO_GROUPS.findIndex(g => g.id === id)
+  if (idx !== -1) {
+    DEMO_GROUPS.splice(idx, 1)
+    return true
+  }
+  return false
+}
+
+/**
+ * Create a new virtual demo group in memory.
+ */
+export function createDemoGroup(data) {
+  const id = `demo-grp-${Date.now()}`
+  const newGrp = {
+    id,
+    name: data.name,
+    type: data.type || 'custom',
+    color: data.color || '#8b5cf6',
+    sort_order: DEMO_GROUPS.length,
+    spotify_sync_enabled: data.spotify_sync_enabled ?? 0,
+    weather_sync_enabled: data.weather_sync_enabled ?? 0,
+    created_at: new Date().toISOString(),
+    device_ids: data.device_ids || [],
+    child_group_ids: data.child_group_ids || [],
+  }
+  DEMO_GROUPS.push(newGrp)
+  return newGrp
+}

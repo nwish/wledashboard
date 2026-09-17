@@ -154,6 +154,6 @@
 * [ ] PixelForge support and integration for 2D matrix art and animated GIF assets
 * [ ] Robust WLED strip segment control mastered on the dashboard
 * [ ] Segment control in the 3D spatial visualizer with declared bend angles at specified pixel counts
-* [ ] Proxmox VE Helper Script for 1 click LXC automated container deployment
+* [x] Proxmox VE Helper Script for 1 click LXC automated container deployment
 * [ ] GhostPoly inspired procedural blueprint to 3D room spatial mesh extrusion
 

@@ -678,9 +678,10 @@ export function DeviceCard({ device, isManualSort, dragAttributes, dragListeners
                 style={device.spotify_sync_enabled ? { backgroundColor: 'var(--accent-emerald)', color: '#000' } : {}}
                 onClick={async () => {
                   if (!isOnline) return
+                  const nextSync = device.spotify_sync_enabled ? 0 : 1
                   try {
-                    await updateDevice(device.id, { spotify_sync_enabled: device.spotify_sync_enabled ? 0 : 1 })
-                    addToast({ message: `Spotify Sync ${device.spotify_sync_enabled ? 'Disabled' : 'Enabled'}`, type: 'success' })
+                    await updateDevice(device.id, { spotify_sync_enabled: nextSync })
+                    addToast({ message: `Spotify Sync ${nextSync ? 'Enabled' : 'Disabled'}`, type: 'success' })
                   } catch (err) {
                     addToast({ message: 'Failed to update Spotify sync', type: 'error' })
                   }
@@ -697,9 +698,10 @@ export function DeviceCard({ device, isManualSort, dragAttributes, dragListeners
                 style={device.weather_sync_enabled ? { backgroundColor: 'var(--accent-cyan)', color: '#000' } : {}}
                 onClick={async () => {
                   if (!isOnline) return
+                  const nextWeather = device.weather_sync_enabled ? 0 : 1
                   try {
-                    await updateDevice(device.id, { weather_sync_enabled: device.weather_sync_enabled ? 0 : 1 })
-                    addToast({ message: `Weather Sync ${device.weather_sync_enabled ? 'Disabled' : 'Enabled'}`, type: 'success' })
+                    await updateDevice(device.id, { weather_sync_enabled: nextWeather })
+                    addToast({ message: `Weather Sync ${nextWeather ? 'Enabled' : 'Disabled'}`, type: 'success' })
                   } catch (err) {
                     addToast({ message: 'Failed to update Weather sync', type: 'error' })
                   }

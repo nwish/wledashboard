@@ -237,15 +237,15 @@ async function run() {
     scrapeReddit(),
   ]);
 
-  // Combine and deduplicate
+  // Combine and deduplicate: if a username exists in both Reddit and GitHub, GitHub ALWAYS wins
   const mergedMap = new Map();
-  for (const c of ghContributors) {
-    mergedMap.set(c.name.toLowerCase(), c);
-  }
+  // 1. Ingest Reddit contributors first
   for (const c of redditContributors) {
-    if (!mergedMap.has(c.name.toLowerCase())) {
-      mergedMap.set(c.name.toLowerCase(), c);
-    }
+    mergedMap.set(c.name.toLowerCase(), { ...c, platform: 'reddit' });
+  }
+  // 2. Ingest GitHub contributors (overwrites any matching Reddit username with GitHub platform)
+  for (const c of ghContributors) {
+    mergedMap.set(c.name.toLowerCase(), { ...c, platform: 'github' });
   }
 
   // Strict alphabetical order

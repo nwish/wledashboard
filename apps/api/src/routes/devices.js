@@ -21,6 +21,8 @@ const CreateDeviceSchema = z.object({
   mac_address: z.string().optional(),
   firmware_ver: z.string().optional(),
   led_count: z.number().int().positive().optional(),
+  spotify_sync_enabled: z.union([z.number().int().min(0).max(1), z.boolean().transform(v => v ? 1 : 0)]).optional().default(0),
+  weather_sync_enabled: z.union([z.number().int().min(0).max(1), z.boolean().transform(v => v ? 1 : 0)]).optional().default(0),
 })
 
 const UpdateDeviceSchema = z.object({
@@ -30,10 +32,12 @@ const UpdateDeviceSchema = z.object({
   led_density: z.number().positive().optional(),
   led_count: z.number().int().positive().optional(),
   firmware_ver: z.string().optional(),
+  spotify_sync_enabled: z.union([z.number().int().min(0).max(1), z.boolean().transform(v => v ? 1 : 0)]).optional(),
+  weather_sync_enabled: z.union([z.number().int().min(0).max(1), z.boolean().transform(v => v ? 1 : 0)]).optional(),
 })
 
 const ReorderSchema = z.object({
-  ids: z.array(z.string().uuid()),
+  ids: z.array(z.string()),
 })
 
 const CommandSchema = z.record(z.unknown())
