@@ -211,6 +211,12 @@ bash -c "$(curl -fsSL https://raw.githubusercontent.com/upioneer/WLEDashboard/ma
 
 ---
 
-## License & Copyright
+## License & Terms of Use
 
-Copyright (c) 2026 Jasen Henry. All Rights Reserved. See [LICENSE.md](LICENSE.md) for details.
+Copyright (c) 2026 Jasen Henry. All Rights Reserved.
+
+WLEDashboard is proprietary software. You are welcome to deploy, self-host, and run WLEDashboard for personal, non-commercial home automation.
+
+* **No Redistribution**: Copying, mirroring, redistributing, or publishing the source code, container images, or binaries without explicit written permission is strictly prohibited.
+* **No Unauthorized Modifications**: Creating public derivatives, unauthorized forks with modifications, or redistributed builds is not permitted under the copyright terms.
+* **Terms & Inquiries**: For full legal provisions, review [LICENSE.md](LICENSE.md). For commercial licensing or inquiries, please contact the repository owner.
