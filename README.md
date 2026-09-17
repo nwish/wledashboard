@@ -1,6 +1,24 @@
 # WLEDashboard
 
+[![GitHub Release](https://img.shields.io/github/v/release/upioneer/WLEDashboard?color=3b82f6&logo=github&label=Release)](https://github.com/upioneer/WLEDashboard/releases)
+[![License: Proprietary](https://img.shields.io/badge/License-Proprietary-red)](LICENSE.md)
+[![Docker Image](https://img.shields.io/badge/Docker-ghcr.io-2496ED?logo=docker&logoColor=white)](https://github.com/upioneer/WLEDashboard/pkgs/container/wledashboard)
+[![Proxmox LXC](https://img.shields.io/badge/Proxmox-LXC%20Script-E57000?logo=proxmox&logoColor=white)](install/proxmox/README.md)
+[![HACS Integration](https://img.shields.io/badge/HACS-Custom-41BDF5?logo=homeassistant&logoColor=white)](custom_components/wledashboard/)
+[![Website](https://img.shields.io/badge/Website-wledashboard.com-8b5cf6?logo=googlechrome&logoColor=white)](https://wledashboard.com)
+
 A high performance, local first control surface for WLED devices. Control 1 to 100 or more LED controllers from a single responsive interface with spring physics animations, group management, and automatic mDNS network discovery.
+
+> [!NOTE]
+> **Default Port Relocation (v0.21.0+)**: Default application networking has moved from port `3001` to port `8301` to eliminate port collisions with common homelab services such as Z Wave JS UI, Grafana, and Uptime Kuma.
+>
+> * **New Deployments**: Access WLEDashboard directly at `http://<host-ip>:8301`.
+> * **Existing / Upgrading Installations**: Update the `ports` mapping in your `docker-compose.yml` to `"8301:8301"`.
+> * **Preserving Existing Port 3001 Bookmarks**: If you wish to retain existing browser bookmarks, Home Assistant dashboard links, or reverse proxy routes on port 3001, map host port 3001 to container port 8301 in your `docker-compose.yml`:
+>   ```yaml
+>   ports:
+>     - "3001:8301"
+>   ```
 
 ## UI Highlights
 
