@@ -13,7 +13,8 @@
     "dev:web": "npm run dev --workspace=apps/web",
     "build": "npm run build --workspace=apps/web && npm run build --workspace=apps/api",
     "lint": "npm run lint --workspaces",
-    "test": "npm run test --workspaces"
+    "test": "npm run test --workspaces",
+    "scan:forks": "node project_details/playbooks/scan_forks.cjs"
   },
   "engines": {
     "node": ">=22.0.0",
